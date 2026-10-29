@@ -300,7 +300,7 @@ function drawPedalLines(cRef,cChal){
   if(n<2)return;
   const W=cv.width,H=cv.height,pad=30,s=Math.min((W-2*pad)/(x1-x0),(H-2*pad)/(y1-y0));
   const ox=(W-(x1-x0)*s)/2,oy=(H-(y1-y0)*s)/2;cv.__zoom=null; // fresh fit per comparison
-  cv.__sliderPct=null;cv.__clockT=null; // race clock (seconds) inactive until scrubbed / played
+  cv.__sliderPct=null;cv.__clockT=null;pauseRaceClock(cv); // race clock (seconds) inactive until scrubbed / played
   const refT=[64,255,138],refB=[255,59,59],chalT=[77,159,255],chalP=[171,107,255]; // throttle/brake endpoint colors
   const DUAL=10; // % — both pedals at or above this => overlapping pedal-press cue (distinct hue + '*' in tooltip)
   const col=(c1,c2,t,a)=>'rgba('+Math.round(c1[0]+(c2[0]-c1[0])*t)+','+Math.round(c1[1]+(c2[1]-c1[1])*t)+','+Math.round(c1[2]+(c2[2]-c1[2])*t)+','+(a).toFixed(3)+')';
@@ -412,6 +412,32 @@ function setClockPct(cv,pct){ // slider input path: % of full race time (max lap
   const T=raceClockTotals(cv);if(!cv||!T)return;
   cv.__clockT=Math.max(0,Math.min(T.T,(+pct)/100*T.T));
   syncRaceClock(cv);
+}
+// Play/pause (chunk 2): a real-time rAF loop over setClockT — one clock-second per wall-second,
+// stopping itself at the end of full race time. Playing from the finish restarts at 0.
+function updatePlayBtn(cv){const b=$('cmpClockPlay');if(b)b.textContent=(cv&&cv.__clockPlaying)?'\u23F8':'\u25B6';}
+function playRaceClock(cv){
+  const T=raceClockTotals(cv);if(!cv||!T)return;
+  if(cv.__clockPlaying)return;
+  if(cv.__clockT==null||cv.__clockT>=T.T-1e-9)setClockT(cv,0); // (re)start from the line
+  cv.__clockPlaying=true;updatePlayBtn(cv);
+  let last=null;
+  const step=(now)=>{
+    if(!cv.__clockPlaying)return; // paused / cancelled since this frame was queued
+    if(last==null)last=now; // first frame after play: no advance (deterministic for probes too)
+    setClockT(cv,cv.__clockT+Math.max(0,now-last)/1000); // real time; setClockT clamps at T
+    last=now;
+    if(cv.__clockT>=T.T-1e-9){pauseRaceClock(cv);return;} // reached the end of full race time
+    cv.__clockRAF=requestAnimationFrame(step);
+  };
+  cv.__clockRAF=requestAnimationFrame(step);
+}
+function pauseRaceClock(cv){
+  if(!cv||!cv.__clockPlaying)return;
+  cv.__clockPlaying=false;
+  if(cv.__clockRAF&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(cv.__clockRAF);
+  cv.__clockRAF=null;
+  updatePlayBtn(cv);
 }
 // Readout under the race-clock slider: same-instant telemetry for both cars.
 function updateXcmpSliderRead(){
