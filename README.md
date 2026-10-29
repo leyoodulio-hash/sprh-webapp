@@ -17,6 +17,12 @@ reference laps.
   Settings to enable the built-in coach chat (the key is stored only in your browser's
   localStorage and sent only to that endpoint).
 
+## First time? Getting your telemetry
+
+[How to get your `.ld` file from Assetto Corsa Competizione](telemetry-setup.html) —
+enabling MoTeC logging, where sessions are saved, and tips for logging data the
+analysis can actually use.
+
 ## Bundled track data
 
 Suzuka Circuit and Nürburgring Nordschleife ship with embedded reference laps, braking
