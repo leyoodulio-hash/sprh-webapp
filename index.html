@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SRPH AI Coach</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#0e1116;color:#d7dee8;font:14px/1.5 system-ui,'Segoe UI',sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;background:#131922;border-bottom:1px solid #232c3a}
+h1{font-size:17px;margin:0;color:#fff;white-space:nowrap}
+.sub{color:#8b98ab;font-size:12px;flex:1}
+.layout{display:flex;min-height:calc(100vh - 45px)}
+aside{width:360px;flex:none;border-right:1px solid #232c3a;padding:14px;display:flex;flex-direction:column;gap:14px;background:#10151d}
+main{flex:1;padding:14px 18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+section{background:#151b25;border:1px solid #232c3a;border-radius:8px;padding:12px}
+h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:#9fb0c7;margin:0 0 8px}
+label{display:block;font-size:12px;color:#8b98ab;margin:8px 0 3px}
+input,textarea{width:100%;background:#0d1117;border:1px solid #2a3546;border-radius:6px;color:#e6edf5;padding:7px 9px;font:inherit}
+input[type=password]{letter-spacing:.1em}
+.btnrow{display:flex;gap:8px;margin-top:10px}
+button{background:#243447;border:1px solid #33465e;color:#dbe6f3;border-radius:6px;padding:7px 12px;font:inherit;cursor:pointer}
+button:hover{background:#2c405a}
+button.primary{background:#2b6cb0;border-color:#3b82d4}
+button.primary:hover{background:#3379c4}
+.status{font-size:12px;margin-top:8px;min-height:16px}
+.ok{color:#5fd08a}.err{color:#ff7b72}.dim{color:#8b98ab}
+.models{font-size:12px;margin-top:8px;max-height:140px;overflow:auto;display:flex;flex-wrap:wrap;gap:4px}
+.model-chip{border:1px solid #232c3a;border-radius:4px;padding:2px 6px;color:#c9d4e3;background:#151b25;cursor:pointer}
+.model-chip:hover{border-color:#3b82f6;color:#fff}
+.drop{border:1.5px dashed #33465e;border-radius:8px;padding:12px;text-align:center;color:#8b98ab;font-size:12.5px;cursor:pointer;margin-top:8px}
+.drop.over{border-color:#4da3ff;background:#182230}
+.filechip{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#b9c6d8;padding:5px 8px;border:1px solid #2a3546;border-radius:6px;margin-top:6px;background:#101722}
+.filechip .meta{color:#7f8ea3;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xslot{flex:1;min-width:200px;border:1.5px dashed #33465e;border-radius:8px;padding:10px 12px;background:#101722;display:flex;flex-direction:column;gap:3px}
+.xslot.over{border-color:#4da3ff;background:#182230}
+.xslot.filled{border-style:solid;border-color:#2a5b8c}
+.xslot b{font-size:12.5px;color:#eaf1f9}
+.xs-lap{font-size:13px;color:#7fd0ff;font-weight:600}
+.xs-file{font-size:11px;color:#7f8ea3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xs-empty{font-size:12px;color:#5b6a80}
+.xgroup{margin-top:10px}
+.xg-title{display:block;font-size:11.5px;color:#7f8ea3;margin-bottom:4px}
+.lapchip{display:inline-block;cursor:grab;font-size:12px;color:#b9c6d8;padding:4px 9px;border:1px solid #2a3546;border-radius:6px;background:#101722;margin:0 6px 6px 0}
+.lapchip b{color:#eaf1f9}
+.lapchip:hover{border-color:#4da3ff}
+.combo{border:1px solid #2a3546;border-radius:8px;padding:9px 10px;margin-bottom:8px;background:#101722}
+.combo.active{border-color:#4da3ff}
+.combo .t{font-size:13.5px;color:#eaf1f9;font-weight:600}
+.combo .c{font-size:12px;color:#8b98ab;margin-top:2px}
+.badge{display:inline-block;font-size:10.5px;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:middle;background:#233042;color:#9fb0c7}
+.badge.seed{background:#2b4a33;color:#8fd8a8}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+th,td{padding:4px 8px;border-bottom:1px solid #222b39;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:#9fb0c7;font-weight:600;background:#131a25}
+tr.best td{background:#182433;color:#eaf1f9}
+.hint{font-size:11.5px;color:#7f8ea3;margin-top:6px}
+.cbtn{background:#243447;border:1px solid #33465e;color:#dbe6f3;border-radius:5px;padding:3px 9px;font-size:11.5px;cursor:pointer}
+.cbtn:hover{background:#2c405a}
+.cbtn.on{background:#ff5c39;color:#fff;border-color:#ff5c39}
+#chatLog{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px}
+.msg{max-width:78%;padding:8px 11px;border-radius:10px;white-space:pre-wrap;font-size:13px;word-break:break-word}
+.msg.user{align-self:flex-end;background:#24466b;color:#eaf1f9}
+.msg.assistant{align-self:flex-start;background:#1c2532;color:#d7dee8;border:1px solid #2a3546}
+.msg.error{align-self:center;background:#3a2026;color:#ffb4ad;font-size:12.5px;max-width:90%}
+.fup-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;width:100%;max-width:78%;justify-content:flex-start}
+.fup-chip{background:#212b3a;border:1px solid #35455c;color:#9fc1e8;font-size:12px;padding:4px 10px;border-radius:14px;cursor:pointer;text-align:left}
+.fup-chip:hover{background:#2a3a50;color:#cfe2f7}
+.chat-map{display:block;max-width:300px;width:85%;margin:8px 0;border-radius:10px;border:1px solid #2a3546;background:#10151c}
+.map-strip{margin-top:8px;padding-top:6px;border-top:1px dashed #2a3546;font-size:.9em;color:#9aa7bd;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.map-strip .chat-map{width:auto;max-width:170px;margin:0}
+.chat-overlay{max-width:560px;width:95%}
+.ovl-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.85em;color:#9aa7bd;margin-top:8px}
+.chatrow{display:flex;gap:8px;margin-top:10px}
+.presets{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.preset-group{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.pgroup-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#8b98ab;background:#141c27;border:1px solid #232c3a;border-radius:4px;padding:2px 7px;margin-right:2px}
+.preset-hint{font-size:10.5px;color:#6d7a90;margin-bottom:2px}
+.levels{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.level-pill{font-size:11.5px;border-radius:14px;padding:3px 10px;border:1px solid #2a3546;background:#1a2432;color:#9fb0c7;display:inline-flex;align-items:center;gap:6px}
+.level-pill b{font-weight:700}
+.level-pill.active{border-color:#2f855a;color:#8fd8a8;background:#15231b}
+.level-pill.beta{border-color:#b7791f;color:#e3b341;background:#221b0e;cursor:help}
+.level-pill.locked{color:#66707f;border-style:dashed;cursor:help}
+.lvbadge{display:inline-block;font-size:10px;border-radius:4px;padding:1px 5px;margin-left:8px;vertical-align:middle;background:#233042;color:#9fb0c7;letter-spacing:.04em}
+.lvbadge.l2{background:#2b2416;color:#e3b341}
+.preset{background:#1a2432;border:1px solid #2a3546;color:#9fb0c7;font-size:12px;padding:5px 10px;border-radius:14px;cursor:pointer}
+.preset:hover{border-color:#3b82f6;color:#eaf1f9;background:#20304a}
+.preset.accent{border-color:#3b82f6;color:#cfe0f5}
+.preset.accent:hover{background:#1d3a5f}
+#chatInput{flex:1;resize:vertical;min-height:42px;max-height:160px}
+details{margin-top:10px}summary{cursor:pointer;font-size:12.5px;color:#9fb0c7}
+pre.digest{background:#0d1117;border:1px solid #2a3546;border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;white-space:pre}
+</style>
+</head>
+<body>
+<header>
+  <h1>SRPH AI Coach</h1>
+  <span class="sub">telemetry-based driver coaching &middot; ACC .ld + iRacing .ibt telemetry + your LLM endpoint</span>
+  <button id="btnNewChat" type="button">New chat</button>
+</header>
+<div class="layout">
+<aside>
+<section id="llmSec">
+  <h2>LLM endpoint</h2>
+  <label for="cfgBase">Base URL (OpenAI-compatible)</label>
+  <input id="cfgBase" type="text" placeholder="https://api.openai.com/v1" spellcheck="false">
+  <label for="cfgKey">API key</label>
+  <input id="cfgKey" type="password" placeholder="sk-..." autocomplete="off">
+  <label for="cfgModel">Model</label>
+  <input id="cfgModel" type="text" placeholder="gpt-4o-mini" spellcheck="false">
+  <div class="btnrow">
+    <button id="btnSaveCfg" type="button" class="primary">Save</button>
+    <button id="btnTestLlm" type="button">Test connection</button>
+  </div>
+  <div id="llmStatus" class="status dim"></div>
+  <div id="llmModels" class="models" hidden></div>
+</section>
+
+<section id="filesSec">
+  <h2>Files</h2>
+  <label for="telemetryInput">Telemetry (.ld / .ibt)</label>
+  <input id="telemetryInput" type="file" accept=".ld,.ibt" hidden>
+  <div class="drop" id="telemetryDrop">click or drop a telemetry file here (.ld or .ibt)</div>
+  <label for="setupInput">Car setup (ini / txt / json) <span class="lvbadge l2" title="Attached to the coach as context for L2 setup diagnosis">L2</span></label>
+  <input id="setupInput" type="file" accept=".ini,.txt,.json,.csv,text/plain,text/csv,application/json" hidden>
+  <div class="drop" id="setupDrop">click or drop a car-setup file here (Level 2 - setup diagnosis)</div>
+  <label for="leftInput">Track boundary &minus; left (.csv)</label>
+  <input id="leftInput" type="file" accept=".csv,text/csv" hidden>
+  <div class="drop" id="leftDrop">click or drop left track boundary (.csv)</div>
+  <label for="rightInput">Track boundary &minus; right (.csv)</label>
+  <input id="rightInput" type="file" accept=".csv,text/csv" hidden>
+  <div class="drop" id="rightDrop">click or drop right track boundary (.csv)</div>
+  <div id="loadedFiles"></div>
+  <p class="hint">Files are held in memory only &mdash; re-upload after a page reload. Telemetry files (.ld / .ibt) are parsed entirely in your browser; nothing is uploaded anywhere.</p>
+</section>
+
+<section id="combosSec">
+  <h2>Known track &times; car combos</h2>
+  <div id="comboList"></div>
+  <p class="hint">Nothing is preloaded - each uploaded file adds its own track / car / driver to this list automatically.</p>
+</section>
+
+</aside>
+<main>
+<section id="reportSec">
+  <h2>Report</h2>
+  <div id="levelBar" class="levels"></div>
+  <div id="reportBody" class="dim">Upload a telemetry file (.ld or .ibt) to build the report.</div>
+</section>
+
+<section id="crossSec">
+  <h2>Compare<span class="lvbadge">L1</span></h2>
+  <div class="hint">Drag a lap chip into the <b>A</b> or <b>B</b> slot to compare two laps — any loaded file, same-session pairs included (e.g. your lap vs a pro's reference). Delta convention: B − A · positive = B slower · green = B faster.</div>
+  <div id="crossSlots" style="display:flex;gap:14px;margin-top:10px;flex-wrap:wrap"></div>
+  <div id="crossPool" style="margin-top:6px"></div>
+  <div id="crossSummary" class="dim" style="margin-top:12px">Drop two laps to compare.</div>
+</section>
+
+<section id="chatSec">
+  <h2>Coach</h2>
+  <div id="coachLevel" class="dim" style="margin:8px 0 8px;font-size:12px"></div>
+  <div id="chatLog"></div>
+      <div class="presets">
+        <div class="preset-hint">Pick prompts at your level - Level 1 basics &amp; consistency, then Level 2 technique, then Level 3 pace vs a reference lap, then Level 4 car &amp; setup (setup-scan rows), then Level 5 setup A/B (car health between sessions).</div>
+        <div class="preset-group"><span class="pgroup-label">Level 1 · Basics &amp; consistency</span>
+          <button type="button" class="preset" data-prompt="Give me a general read of this session, like a coach debriefing after the run. Using only the telemetry digest: summarize overall performance (lap count, best lap, time spread), highlight 2-3 strengths with the numbers that prove them, identify where the biggest time losses are and why, then give an ordered priority list of what to work on next. Keep it a short structured summary I can review in one minute.">General read</button>
+          <button type="button" class="preset" data-prompt="Using only the telemetry digest: quantify my lap-to-lap consistency - best vs worst lap time and the full spread, which laps deviate from the pack. Then cross-reference the entry-speed-by-zone table to locate WHERE the inconsistency lives (which zones wobble most between laps) and what driving habit that points to. Consistency is the priority for this answer, not raw pace: end with an ordered list of what to stabilize first on the next session, citing the numbers from the digest.">How consistent am I this session?</button>
+          <button type="button" class="preset" data-prompt="Using the entry-speed-by-zone table in the digest, tell me which braking zones are most inconsistent between laps and what that says about my driving habits. Cite the numbers from the digest.">How consistent am I at each braking zone?</button>
+        </div>
+        <div class="preset-group"><span class="pgroup-label">Level 2 · Technique &amp; drills</span>
+          <button type="button" class="preset" data-prompt="Based only on the telemetry digest, give me the top 3 driver-skill habits to work on from this session in order of expected impact - braking points, entry speed, throttle application, line or consistency. Keep it practical and cite the numbers that justify each one.">Top 3 habits to work on</button>
+          <button type="button" class="preset" data-prompt="Describe what my best lap did well at its braking zones (entry speeds, decel, duration) and give me a short checklist of exactly what to repeat on the next run.">What should I repeat from my best lap?</button>
+          <button type="button" class="preset accent" data-prompt="Using the telemetry digest, evaluate my core driving technique: braking point consistency, entry speed vs. reference, brake attack rate & trail-off, throttle-on timing & steering unwind, coast gaps. Cite the specific numbers and give me 3 concrete drills to practice.">Basic Driving Technique</button>
+          <button type="button" class="preset" data-prompt="Using only the telemetry digest: compare my fastest and slowest timed laps at the corner entry phase (braking point to turn-in). Use the entry-speed-by-zone table to identify the exact speed delta (km/h) at each corner's entry, then use the best-lap braking zones (decel G, duration) as the reference for what good looks like. Explain where I braked early or over-slowed versus where I carried more speed than my best lap, and which corner to fix first. Cite the numbers from the digest.">Entry speed: fastest vs slowest</button>
+          <button type="button" class="preset" data-prompt="Using only the telemetry digest: compare my fastest and slowest timed laps with the 'Corner phase speeds' table [entry / v-min / exit]. For each corner, say where the gap is largest - at entry (braking), mid-corner (v-min = turning too slowly) or on exit (throttle). Rank the corners by speed lost and tell me which one to fix first. Cite the numbers from the digest.">V-min &amp; exit: fastest vs slowest</button>
+          <button type="button" class="preset" data-prompt="Using only the telemetry digest: analyze my steering-throttle synchronization at corner exits with the 'Exit technique' table [steer° at full throttle / s brake-off to 50% throttle / coast gap]. Flag corners where I am still turning while on full throttle (aggressive steering + high throttle together) and corners where the throttle-on is slow or hesitant. Give me one concrete drill for each problem pattern, citing the numbers.">Exit technique: steer/throttle sync</button>
+          <button type="button" class="preset" data-prompt="Using only the telemetry digest: compare the 'Peak tire slip angle per corner' values [FL / FR / RL / RR] between my laps. Which corners run at high slip (bigger degrees) and on which tires? Present this as measured symptoms; name setup candidates (alignment, suspension, pressures) only if plausible from the pattern - do not assert a mechanical cause from this data alone.">Tire slip angles: compare laps</button>
+        </div>
+        <div class="preset-group"><span class="pgroup-label">Level 3 · Pace &amp; reference laps</span>
+          <button type="button" class="preset" data-prompt="Compare my laps using the digest. Why is my slowest lap slower than my best, where exactly am I losing time (which zones), and what should I fix first? Cite the numbers from the digest.">Why is my slowest lap slower?</button>
+          <button type="button" class="preset accent" data-xreview="1" title="Sends the pre-canned braking-analysis prompt plus the comparison's measured data to your LLM endpoint (both A and B slots must be filled)">Coach review: braking analysis (A vs B)</button>
+          <button type="button" class="preset accent" data-xreview="grip" title="Sends the pre-canned tire-grip prompt plus the comparison's measured slip + speed data to your LLM endpoint (both A and B slots must be filled)">Coach review: tire grip profile (front vs rear)</button>
+        </div>
+        <div class="preset-group"><span class="pgroup-label">Level 4 · Car &amp; setup</span>
+          <button type="button" class="preset accent" data-prompt="Using only the setup-scan lines of the telemetry digest (tire temps & pressures, steady-state understeer, exit oversteer, braking instability, bottoming, ABS/TC activations): give me a one-minute car health read. List every flagged row with its numbers and which laps it appears on, note whether anything grows over the stint, then rank the 2-3 most plausible setup candidates to test first - each framed as a hypothesis to verify under comparable conditions, never a guaranteed fix. If no setup-scan section is present in the digest, say the file lacks the mechanical channels.">Car health read (setup scan)</button>
+          <button type="button" class="preset" data-prompt="Using only the setup-scan lines of the telemetry digest: how are my tires behaving across this session? Compare per-wheel core temps at lap end and front-to-rear balance, and which wheels heat most over the stint. Flag any laps with pressure outside the 26.8-27.2 psi window and what that suggests about load or management. Present as measured symptoms; name setup candidates (pressures, alignment, wing) only if plausible from the pattern - do not assert a mechanical cause from this data alone.">Tire management read</button>
+          <button type="button" class="preset" data-prompt="Using the steady-state understeer lines in the digest (steady cornering segments; flag when max mean front-to-rear slip-angle diff >1.0 deg): is this car understeering? Which laps show it, how big is the F-R slip diff, and does it grow over the stint as tires warm? Present as a measured symptom; name setup candidates only if plausible - do not assert a mechanical cause from this data alone.">Understeer check</button>
+          <button type="button" class="preset" data-prompt="Using the exit-oversteer lines in the digest (counter-steering = steering against lateral G at |latG|>=0.30 G with throttle >=50% and speed >=60 km/h; flag when >=2 events): is this car stepping out on exits? How many counter-steer events per lap, what's the max rear slip ratio, how often do I lift (throttle hesitations)? Separate driver-side causes (steering too fast + throttle too early) from setup candidates - present as measured symptoms, not verdicts.">Exit oversteer check</button>
+          <button type="button" class="preset" data-prompt="Using the braking-instability lines in the digest (steering reversals per brake run >=0.5 s, flag when >4; front/rear wheel-speed gap at peak decel, rear-lock candidate if gap >5 rad/s with ABS): is this car stable under braking? Which laps show corrections mid-brake-run and how big is the F-R wheel-speed gap at peak decel? A rear-lock candidate points to brake-bias/stability candidates - present as measured symptoms; name setup candidates only if plausible.">Braking stability check</button>
+          <button type="button" class="preset" data-prompt="Using the bottoming lines in the digest (suspension-travel p95 per wheel as a fraction of max travel, flag >=0.90 on any wheel; max vertical G over straights, flag >=3.0): is this car hitting its suspension limits? Which wheels run closest to full travel and how high does vertical G get on the flat? Present as measured symptoms; name setup candidates (ride height, springs, anti-dive) only if plausible.">Bottoming check</button>
+          <button type="button" class="preset" data-prompt="Using the ABS/TC lines in the digest (per-lap activation share + event counts): where and how often did the systems intervene? Repeated ABS at the same braking zones points to late/heavy braking (driver) or brake-bias candidates; repeated TC on exits points to aggressive throttle-on (driver) or rear-grip/balance candidates. Note when a system reads flat zero - it may be disabled in setup, not absent. Present as measured symptoms; name setup candidates only if plausible.">ABS / TC read</button>
+        </div>
+        <div class="preset-group"><span class="pgroup-label">Level 5 · Setup A/B</span>
+          <button type="button" class="preset accent" data-xreview="health" data-hrow="all" title="Sends the pre-canned car-health prompt plus both sides' setup-scan lines (full-lap medians + compared lap, fuel disclosed per side) to your LLM endpoint (both A and B slots must be filled)">Coach review: car health (A vs B)</button>
+          <button type="button" class="preset" data-xreview="health" data-hrow="tire" title="Sends the pre-canned tire-management prompt plus both sides' setup-scan lines to your LLM endpoint (both A and B slots must be filled)">Tire management (A vs B)</button>
+          <button type="button" class="preset" data-xreview="health" data-hrow="us" title="Sends the pre-canned understeer prompt plus both sides' setup-scan lines to your LLM endpoint (both A and B slots must be filled)">Understeer (A vs B)</button>
+          <button type="button" class="preset" data-xreview="health" data-hrow="exit" title="Sends the pre-canned exit-oversteer prompt plus both sides' setup-scan lines to your LLM endpoint (both A and B slots must be filled)">Exit oversteer (A vs B)</button>
+          <button type="button" class="preset" data-xreview="health" data-hrow="brake" title="Sends the pre-canned braking-stability prompt plus both sides' setup-scan lines to your LLM endpoint (both A and B slots must be filled)">Braking stability (A vs B)</button>
+          <button type="button" class="preset" data-xreview="health" data-hrow="bottom" title="Sends the pre-canned bottoming prompt plus both sides' setup-scan lines to your LLM endpoint (both A and B slots must be filled)">Bottoming (A vs B)</button>
+          <button type="button" class="preset" data-xreview="health" data-hrow="abs" title="Sends the pre-canned ABS/TC prompt plus both sides' setup-scan lines to your LLM endpoint (both A and B slots must be filled)">ABS / TC (A vs B)</button>
+        </div>
+      </div>
+  <div class="chatrow">
+    <textarea id="chatInput" placeholder="Ask about laps, braking zones, consistency&hellip; (telemetry digest + setup file are attached automatically)"></textarea>
+    <button id="btnSend" type="button" class="primary">Send</button>
+  </div>
+  <div id="chatStatus" class="status dim"></div>
+</section>
+
+</main>
+</div>
+<script src="src/parse.js"></script>
+<script src="src/zones.js"></script>
+<script src="src/compare-report.js"></script>
+<script src="src/compare-cross.js"></script>
+<script src="data/reflaps.js"></script>
+<script src="src/ref-cross.js"></script>
+<script src="src/ref-ibt.js"></script>
+<script src="data/corners.js"></script>
+<script src="src/ui-wiring-head.js"></script>
+<script src="data/preset_bounds.js"></script>
+<script src="src/load-report.js"></script>
+<script src="src/render-trackmap.js"></script>
+<script src="src/render-reports.js"></script>
+<script src="src/ui-chat-cross.js"></script>
+</body>
+</html>
