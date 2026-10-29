@@ -300,7 +300,7 @@ function drawPedalLines(cRef,cChal){
   if(n<2)return;
   const W=cv.width,H=cv.height,pad=30,s=Math.min((W-2*pad)/(x1-x0),(H-2*pad)/(y1-y0));
   const ox=(W-(x1-x0)*s)/2,oy=(H-(y1-y0)*s)/2;cv.__zoom=null; // fresh fit per comparison
-  cv.__sliderPct=null; // lap-position slider inactive until the user drags it
+  cv.__sliderPct=null;cv.__clockT=null; // race clock (seconds) inactive until scrubbed / played
   const refT=[64,255,138],refB=[255,59,59],chalT=[77,159,255],chalP=[171,107,255]; // throttle/brake endpoint colors
   const DUAL=10; // % — both pedals at or above this => overlapping pedal-press cue (distinct hue + '*' in tooltip)
   const col=(c1,c2,t,a)=>'rgba('+Math.round(c1[0]+(c2[0]-c1[0])*t)+','+Math.round(c1[1]+(c2[1]-c1[1])*t)+','+Math.round(c1[2]+(c2[2]-c1[2])*t)+','+(a).toFixed(3)+')';
@@ -345,16 +345,17 @@ function drawPedalLines(cRef,cChal){
     c.fillText('scroll = zoom \u00b7 drag = pan \u00b7 dblclick = reset',10,H-12);
     // Lap-position slider markers: A/B dots at the same lap fraction. Green = throttle dominant,
     // red = brake dominant (coasting reads as "not braking"); label letter identifies the car.
-    const slPct=cv.__sliderPct;
-    if(slPct!=null){
+    const clockT=cv.__clockT;
+    if(clockT!=null){
       const dot=(pts,i,ch)=>{const p=pts[i];if(!p||!isFinite(p[0])||!isFinite(p[1]))return;
         c.fillStyle=p[2]>p[3]?'#ff3b3b':'#40ff8a';c.beginPath();c.arc(X(p[0]),Y(p[1]),8,0,Math.PI*2);c.fill();
         c.strokeStyle='#0d1117';c.lineWidth=1.5;c.stroke();
         c.font='bold 11px Segoe UI';c.textAlign='center';c.fillStyle='#fff';c.fillText(ch,X(p[0]),Y(p[1])+4);c.textAlign='left';};
-      // Time-synced race clock: slider % = A's lap fraction; the B dot sits where it is at that same elapsed time.
+      // Race clock (seconds since start, [0, max(lapA,lapB)]): each car's dot sits where it is at
+      // that same instant running its own lap; the faster car clamps at the finish line.
       const tR2=oa.__tot||((cRef.b-cRef.a)/(cRef.freq||25)),tC2=ob.__tot||((cChal.b-cChal.a)/(cChal.freq||25));
-      dot(oa,Math.round(slPct/100*(oa.length-1)),'A');
-      dot(ob,Math.min(ob.length-1,Math.round(slPct/100*(tR2/tC2)*(ob.length-1))),'B'); // slower lap lags; faster lap clamps at finish
+      dot(oa,Math.min(oa.length-1,Math.round(clockT/tR2*(oa.length-1))),'A');
+      dot(ob,Math.min(ob.length-1,Math.round(clockT/tC2*(ob.length-1))),'B');
     }
   }
   wireZoomPan(cv); // idempotent — wires wheel/drag/dblclick once per canvas element
@@ -387,17 +388,44 @@ function drawPedalLines(cRef,cChal){
   }
   draw();
 }
-// Readout under the lap-position slider: same-lap-fraction telemetry for both cars.
+// Race clock core (playable-clock work, chunk 1): one time base in seconds over [0, T] where
+// T = max(lap A duration, lap B duration). cv.__clockT is the single source of truth;
+// __sliderPct mirrors it as a display % (t/T*100) so the slider stays scrubbable and the
+// null = "inactive" gate keeps working for draw()/readout.
+function raceClockTotals(cv){
+  const D=cv&&cv.__pedalData;if(!D)return null;
+  const tR=D.tR||1,tC=D.tC||1;
+  return {tR,tC,T:Math.max(tR,tC)};
+}
+function syncRaceClock(cv){
+  const T=raceClockTotals(cv);if(!T)return;
+  cv.__sliderPct=cv.__clockT==null?null:cv.__clockT/T.T*100; // display sync for the slider element
+  updateXcmpSliderRead();
+  if(cv.__redraw)cv.__redraw();
+}
+function setClockT(cv,t){ // absolute seconds, clamped to [0, T]
+  const T=raceClockTotals(cv);if(!cv||!T)return;
+  cv.__clockT=Math.max(0,Math.min(T.T,t));
+  syncRaceClock(cv);
+}
+function setClockPct(cv,pct){ // slider input path: % of full race time (max lap)
+  const T=raceClockTotals(cv);if(!cv||!T)return;
+  cv.__clockT=Math.max(0,Math.min(T.T,(+pct)/100*T.T));
+  syncRaceClock(cv);
+}
+// Readout under the race-clock slider: same-instant telemetry for both cars.
 function updateXcmpSliderRead(){
   const cv=$('cmpPedalLineMap');if(!cv)return;const D=cv.__pedalData;if(!D)return;
   const el=$('cmpSliderRead'),pl=$('cmpSliderPct');
-  if(cv.__sliderPct==null){if(el)el.innerHTML='';if(pl)pl.textContent='0';return;}
-  const pct=cv.__sliderPct,tR=D.tR||1,tC=D.tC||1,iR=Math.round(pct/100*(D.oa.length-1));
-  const iC=Math.min(D.ob.length-1,Math.round(pct/100*(tR/tC)*(D.ob.length-1))); // time-synced challenge position (clamps at finish if faster)
-  const t=pct/100*tR;
+  if(cv.__clockT==null){if(el)el.innerHTML='';if(pl)pl.textContent='0';return;}
+  const tR=D.tR||1,tC=D.tC||1,T=Math.max(tR,tC),t=cv.__clockT;
+  const iR=Math.min(D.oa.length-1,Math.round(t/tR*(D.oa.length-1))); // each car at its own pace, clamped at finish
+  const iC=Math.min(D.ob.length-1,Math.round(t/tC*(D.ob.length-1)));
   const f=p=>p&&isFinite(p[2])?'brake '+Math.round(p[2])+'% \u00b7 throttle '+Math.round(p[3])+'% \u00b7 steer '+Math.round(p[4])+'\u00b0 \u00b7 speed '+p[5].toFixed(1)+' km/h':'\u2014';
-  if(el)el.innerHTML='Clock <b>'+t.toFixed(1)+' s</b> of '+tR.toFixed(1)+' s &nbsp;\u00b7&nbsp; A @lap '+(iR/Math.max(1,D.oa.length-1)*100).toFixed(1)+'%: '+f(D.oa[iR])+' &nbsp;\u00b7&nbsp; B @lap '+(iC/Math.max(1,D.ob.length-1)*100).toFixed(1)+'%'+(t>tC+1e-9?' <b>(finished)</b>':'')+': '+f(D.ob[iC]);
-  if(pl)pl.textContent=pct.toFixed(0);
+  const aFin=t-tR>1e-9?' <b>(finished)</b>':''; // faster car flags finished once past its lap time
+  const bFin=t-tC>1e-9?' <b>(finished)</b>':'';
+  if(el)el.innerHTML='Clock <b>'+t.toFixed(1)+' s</b> of '+T.toFixed(1)+' s &nbsp;\u00b7&nbsp; A @lap '+(iR/Math.max(1,D.oa.length-1)*100).toFixed(1)+'%'+aFin+': '+f(D.oa[iR])+' &nbsp;\u00b7&nbsp; B @lap '+(iC/Math.max(1,D.ob.length-1)*100).toFixed(1)+'%'+bFin+': '+f(D.ob[iC]);
+  if(pl)pl.textContent=(t/T*100).toFixed(0);
 }
 // Per-file cache of {meta,report} for cross-session comparison (built lazily).
 // App state lives in the CORE section (not the browser-only block below): core functions

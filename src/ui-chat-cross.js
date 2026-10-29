@@ -305,7 +305,7 @@ function runCrossComparison(refSel,chalSel){
     html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Racing line (pedal-colored \u00b7 bright = 100% application)</h3>';
     html+='<canvas id="cmpPedalLineMap" width="700" height="500" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas>';
     html+='<p class="hint">A: green = throttle \u2192 red = brake \u00b7 B: blue = throttle \u2192 purple = brake \u00b7 line fades &amp; thins as input drops \u00b7 where red/purple starts = where braking is applied<br>Line offset (B vs A): mean abs '+lo.meanAbs.toFixed(2)+' m \u00b7 max '+lo.max.toFixed(2)+' m at '+(lo.maxPos*100).toFixed(1)+'% of lap</p>';
-    html+='<div style="margin-top:8px;max-width:700px"><label for="cmpLapSlider" style="font-size:12px;color:#8b949e">Race clock \u2014 A laps 0\u2192100% of its own lap time, B dot follows the same elapsed time: <span id="cmpSliderPct">0</span>%<input id="cmpLapSlider" type="range" min="0" max="100" step="0.5" value="0" style="width:640px;vertical-align:middle;margin-left:8px"></label></div>';
+    html+='<div style="margin-top:8px;max-width:700px"><label for="cmpLapSlider" style="font-size:12px;color:#8b949e">Race clock \u2014 0\u2192100% of full race time (slower lap sets the end); each car runs its own pace, faster one finishes first: <span id="cmpSliderPct">0</span>%<input id="cmpLapSlider" type="range" min="0" max="100" step="0.5" value="0" style="width:640px;vertical-align:middle;margin-left:8px"></label></div>';
     html+='<div id="cmpSliderRead" class="hint" style="margin-top:6px;font-size:12px;line-height:1.6"></div>';
     html+='</div>';
   }
@@ -322,10 +322,10 @@ function runCrossComparison(refSel,chalSel){
     drawComparisonCharts(stA,stB,A.lap,B.lap,$('cmpStwChart'),'A','B',Math.floor(lo/50)*50);}
   if(oT){drawCrossDeltaMap(oT,sA,sB);}
   drawPedalLines(cR,cC);
-  // Lap-position slider: scrub the A lap 0-100%, A/B dots show both cars' position,
-  // readout shows same-fraction telemetry (updateXcmpSliderRead lives in core).
+  // Race-clock slider: scrub 0-100% of full race time (max lap); A/B dots + readout show both
+  // cars at that instant, each running its own pace (setClockPct lives in core).
   const sl=$('cmpLapSlider'),pcv=$('cmpPedalLineMap');
-  if(sl&&pcv){sl.addEventListener('input',()=>{pcv.__sliderPct=+sl.value;updateXcmpSliderRead();if(pcv.__redraw)pcv.__redraw();});}
+  if(sl&&pcv){sl.addEventListener('input',()=>{setClockPct(pcv,+sl.value);});}
 }
 
 /* ---- event wiring + init ---- */
