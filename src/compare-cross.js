@@ -381,7 +381,9 @@ function drawPedalLines(cRef,cChal){
       const g=v=>Math.round(v)+'\u00b0'; // steering angle is already signed degrees (0 = straight)
       const h=v=>v.toFixed(1); // ground speed, km/h
       const sl=p=>isFinite(p[6])?p[6].toFixed(1)+'·'+p[7].toFixed(1)+'·'+p[8].toFixed(1)+'·'+p[9].toFixed(1):'\u2014'; // |slip| FL/FR/RL/RR deg
-      tip.innerHTML='Lap '+(na.i/(D.oa.length-1)*100).toFixed(0)+'%<br>Brake ('+f(na.p[2],na.p)+'/&nbsp;'+f(nb.p[2],nb.p)+')<br>Throttle ('+f(na.p[3],na.p)+'/&nbsp;'+f(nb.p[3],nb.p)+')<br>Steer ('+g(na.p[4])+'/&nbsp;'+g(nb.p[4])+')<br>Speed ('+h(na.p[5])+'/&nbsp;'+h(nb.p[5])+' km/h)<br>Slip ° FL/FR/RL/RR ('+sl(na.p)+' / '+sl(nb.p)+')';
+      const tA=D.tR*na.i/Math.max(1,D.oa.length-1),tB=D.tC*nb.i/Math.max(1,D.ob.length-1); // cumulative lap time at each car's hovered point (uniform-rate decimation)
+      const dt=tA-tB; // Δt A−B: negative when B is slower at this point (user spec 2026-10-30) — inverse of the section's B−A convention
+      tip.innerHTML='Lap '+(na.i/(D.oa.length-1)*100).toFixed(0)+'%<br>Brake ('+f(na.p[2],na.p)+'/&nbsp;'+f(nb.p[2],nb.p)+')<br>Throttle ('+f(na.p[3],na.p)+'/&nbsp;'+f(nb.p[3],nb.p)+')<br>Steer ('+g(na.p[4])+'/&nbsp;'+g(nb.p[4])+')<br>Speed ('+h(na.p[5])+'/&nbsp;'+h(nb.p[5])+' km/h)<br>\u0394t A\u2212B (\u2212 = B slower): '+(dt>=0?'+':'')+dt.toFixed(3)+' s<br>Slip ° FL/FR/RL/RR ('+sl(na.p)+' / '+sl(nb.p)+')';
       tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
     });
     cv.addEventListener('mouseleave',hide);
