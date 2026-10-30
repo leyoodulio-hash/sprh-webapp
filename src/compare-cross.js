@@ -450,7 +450,17 @@ function updateXcmpSliderRead(){
   const f=p=>p&&isFinite(p[2])?'brake '+Math.round(p[2])+'% \u00b7 throttle '+Math.round(p[3])+'% \u00b7 steer '+Math.round(p[4])+'\u00b0 \u00b7 speed '+p[5].toFixed(1)+' km/h':'\u2014';
   const aFin=t-tR>1e-9?' <b>(finished)</b>':''; // faster car flags finished once past its lap time
   const bFin=t-tC>1e-9?' <b>(finished)</b>':'';
-  if(el)el.innerHTML='Clock <b>'+t.toFixed(1)+' s</b> of '+T.toFixed(1)+' s &nbsp;\u00b7&nbsp; A @lap '+(iR/Math.max(1,D.oa.length-1)*100).toFixed(1)+'%'+aFin+': '+f(D.oa[iR])+' &nbsp;\u00b7&nbsp; B @lap '+(iC/Math.max(1,D.ob.length-1)*100).toFixed(1)+'%'+bFin+': '+f(D.ob[iC]);
+  const pA=D.oa[iR],pB=D.ob[iC];
+  let dl=''; // live Δ(B−A) at clock-t: speed/brake/throttle deltas + chord gap (m) — B−A per the section's delta convention
+  if(pA&&pB&&isFinite(pA[5])&&isFinite(pB[5])){
+    const sg=v=>(v>=0?'+':'')+v;
+    const dv=pB[5]-pA[5];
+    dl=' &nbsp;\u00b7&nbsp; \u0394(B\u2212A): speed '+(dv>=0?'+':'')+dv.toFixed(1)+' km/h';
+    if(pA[2]!=null&&pB[2]!=null)dl+=' \u00b7 brake '+sg(Math.round(pB[2]-pA[2]))+'%';
+    if(pA[3]!=null&&pB[3]!=null)dl+=' \u00b7 throttle '+sg(Math.round(pB[3]-pA[3]))+'%';
+    dl+=' \u00b7 gap '+Math.hypot(pB[0]-pA[0],pB[1]-pA[1]).toFixed(1)+' m'; // chord between markers, same-track frame
+  }
+  if(el)el.innerHTML='Clock <b>'+t.toFixed(1)+' s</b> of '+T.toFixed(1)+' s &nbsp;\u00b7&nbsp; A @lap '+(iR/Math.max(1,D.oa.length-1)*100).toFixed(1)+'%'+aFin+': '+f(D.oa[iR])+' &nbsp;\u00b7&nbsp; B @lap '+(iC/Math.max(1,D.ob.length-1)*100).toFixed(1)+'%'+bFin+': '+f(D.ob[iC])+dl;
   if(pl)pl.textContent=(t/T*100).toFixed(0);
 }
 // Per-file cache of {meta,report} for cross-session comparison (built lazily).
