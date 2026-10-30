@@ -276,9 +276,22 @@ function crossHealthPrompt(refSel, chalSel, hrow){
   const w4=a=>Array.isArray(a)&&a.length===4?a.map(x=>g(x,1)).join('/'): '-';
   // per-side setup-scan stats over full laps: medians (median64 = np.median), event sums, flag prevalence
   function sideStats(sel){
+    let ss=null;
     const s=ldSession(sel.fileIdx);
-    if(!s||!s.report||!s.report.setupScan)return null; // embedded preset or mechanical channels missing
-    const ss=s.report.setupScan;
+    if(s&&s.report&&s.report.setupScan){
+      ss=s.report.setupScan; // raw .ld with the full mechanical channel set
+    } else {
+      // embedded preset: per-lap `scan` dicts in the exact setupScan.laps entry shape (T-36,
+      // _gen_reflaps.py v2) — flatten to lap level so medians/flags below work unchanged.
+      const f=state.files[sel.fileIdx];
+      const p=f&&f.parsed?f.parsed.pkg:null;
+      if(f&&f.parsed&&f.parsed.preset&&p&&p.min_lap_s){ // entries without a package degrade to 'no setup scan'
+        const laps=(p.laps||[]).map(l=>l.scan?Object.assign({},l.scan,{lap:l.lap,dur_s:l.dur}):null).filter(Boolean);
+        if(laps.length)ss={min_lap_s:p.min_lap_s,laps};
+      }
+    }
+    if(!ss)return null; // mechanical channels missing (raw) or no embedded scan (preset)
+
     const full=ss.laps.filter(l=>l.dur_s>=ss.min_lap_s);
     const med=k=>{const v=full.map(l=>l[k]).filter(x=>x!=null&&isFinite(x));return v.length?median64(v):null;};
     const medArr=(k,w)=>{const v=full.map(l=>Array.isArray(l[k])?l[k][w]:null).filter(x=>x!=null&&isFinite(x));return v.length?median64(v):null;};
@@ -313,6 +326,19 @@ function crossHealthPrompt(refSel, chalSel, hrow){
     return L;
   }
   const A=sideStats(refSel),B=sideStats(chalSel);
+  // request text: both sides -> comparison framing; exactly one side has data -> absolute terms
+  // (the old canned lines demanded "how did X change from A to B" even when a side had no scan —
+  // T-36 audit of all pre-canned builders found this the only one-sided gap); neither -> NONE.
+  const REQ_ONE={
+    all:['Car health read (single side)','One side has no setup scan, so an A-vs-B comparison is not possible. Using ONLY the measured setup-scan lines below for the side that HAS data, give me a one-minute car health read in absolute terms: which rows flag, on which laps they appear, and what grows over the stint. Rank the 2-3 most plausible setup candidates to test first - each framed as a hypothesis to verify under comparable conditions (fuel mass disclosed), never a guaranteed fix. Cite the measured numbers.'],
+    tire:['Tire management (single side)','Using ONLY the tire lines of the one side that has data below (the other side has no setup scan - comparison not possible): describe tyre behaviour in absolute terms - per-wheel core temps at lap end, front-to-rear balance, pressure vs the 26.8-27.2 psi window. Name setup candidates (pressures, compound, camber) ONLY when plausible - a fuel-mass difference can mimic thermal changes. Cite the measured numbers.'],
+    us:['Understeer (single side)','Using ONLY the understeer lines of the one side that has data below (the other side has no setup scan - comparison not possible): describe steady-state front load in absolute terms - max F-R slip angle diff per lap, which laps exceed 1.0 deg. Name setup candidates (front wing, camber, balance) ONLY when plausible. Cite the measured numbers.'],
+    exit:['Exit oversteer (single side)','Using ONLY the exit-oversteer lines of the one side that has data below (the other side has no setup scan - comparison not possible): describe exit behaviour in absolute terms - counter-steer events, rear slip max, throttle hesitation. Explain driver-side causes first and name setup candidates (rear grip / traction balance) ONLY when plausible. Cite the measured numbers.'],
+    brake:['Braking stability (single side)','Using ONLY the braking-stability lines of the one side that has data below (the other side has no setup scan - comparison not possible): describe braking stability in absolute terms - steering reversals per event, peak-decel wheel-speed gap, rear-lock candidates. Name setup candidates (front brake bias first) ONLY when plausible. Cite the measured numbers.'],
+    bottom:['Bottoming (single side)','Using ONLY the bottoming lines of the one side that has data below (the other side has no setup scan - comparison not possible): describe ride / bottoming behaviour in absolute terms - suspension travel p95 ratios, vertical G on straights. Name setup candidates (ride height, springs, anti-dive) ONLY when plausible. Cite the measured numbers.'],
+    abs:['ABS / TC (single side)','Using ONLY the ABS/TC lines of the one side that has data below (the other side has no setup scan - comparison not possible): where and how often did the systems intervene? Repeated ABS points to late/heavy braking or brake-bias candidates; repeated TC on exits points to aggressive throttle-on or rear-grip/balance candidates. Note when a system reads flat zero - it may be disabled in setup, not absent. Cite the measured numbers.']
+  };
+  const REQ_NONE='No setup-scan data on either side (preset laps without an embedded scan, or raw files missing the mechanical channels) - nothing to review from this section. Load a .ld file with the full channel set and try again.';
   const REQ={
     all:['Car health read (A vs B)','Using ONLY the measured setup-scan lines below for both sides, give me a one-minute car health read of A vs B: which rows differ between sessions, on which side do they flag, and what grew from A to B? Rank the 2-3 most plausible setup candidates to test first - each framed as a hypothesis to verify under comparable conditions (fuel mass disclosed per side), never a guaranteed fix. Cite the measured numbers.'],
     tire:['Tire management (A vs B)','Using ONLY the tire lines of both sides\' setup scans below (core temp end / F-R, pressure medians over full laps): how did tire behaviour change from A to B? Frame deltas as B \u2212 A; name setup candidates (pressures, compound, camber) ONLY when plausible - a fuel-mass difference can mimic thermal changes. Cite the measured numbers.'],
@@ -323,11 +349,15 @@ function crossHealthPrompt(refSel, chalSel, hrow){
     abs:['ABS / TC (A vs B)','Using ONLY the ABS/TC lines below (activation share + event counts over full laps): where and how often did the systems intervene on each side? Repeated ABS points to late/heavy braking or brake-bias candidates; repeated TC on exits points to aggressive throttle-on or rear-grip/balance candidates. Note when a system reads flat zero - it may be disabled in setup, not absent. Frame deltas as B \u2212 A.']
   };
   const key=(hrow&&REQ[hrow])?hrow:'all';
+  // request text: both sides -> comparison framing; exactly one side has data -> absolute terms
+  // (T-36 audit of all pre-canned builders found this the only one-sided gap); neither -> NONE.
+  const req=(A&&B)?REQ[key]:(A||B)?[REQ_ONE[key][0],REQ_ONE[key][1]]:['No setup-scan data',REQ_NONE];
   const L=[];
-  L.push('PRE-CANNED REVIEW REQUEST: '+REQ[key][0]+'.');
-  L.push(REQ[key][1]);
+  if(!(A&&B))L.push('NOTE: '+(A||B?'one side has no setup scan - the request below is in absolute terms, not a comparison.':'no setup-scan data on either side.'));
+  L.push('PRE-CANNED REVIEW REQUEST: '+req[0]+'.');
+  L.push(req[1]);
   L.push('');
-  L.push('SETUP-SCAN COMPARISON (per-side full-lap medians + compared lap; deltas B \u2212 A = Challenge minus Reference)');
+  L.push((A&&B?'SETUP-SCAN COMPARISON':'SETUP-SCAN READ')+' (per-side full-lap medians + compared lap'+(A&&B?'; deltas B \u2212 A = Challenge minus Reference)':''));
   L.push('Reference side A: L'+R.lap+' ('+fmtLap(R.dur)+') from '+fname(refSel.fileIdx));
   L.push('Challenge side B: L'+Ch.lap+' ('+fmtLap(Ch.dur)+') from '+fname(chalSel.fileIdx));
   L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'Challenge slower':(ds<0?'Challenge faster':'equal'))+')');
