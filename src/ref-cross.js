@@ -55,6 +55,32 @@ function speedTraceFor(fileIdx,lapIdx){
   const sv=interp(grid,P,S.vals.subarray(c.a,c.b));
   return grid.map((g,i)=>[+(g*100).toFixed(2),+sv[i].toFixed(1)]);
 }
+// Cumulative time from lap start at each of the shared 401-point lap-position grid points — exact
+// sample times (uniform-rate logging: t = i/freq) interpolated onto the normalized position grid,
+// with the same unwrap + running-max logic as speedTraceFor so point i aligns with point i of every
+// other trace. Preset-aware: embedded reference laps walk their decimated map_pts instead (chord
+// accumulation for position fraction; uniform-time scaling by map_tot_s — see drawPedalLines px()).
+// Returns [[posPct, cumTimeS]...] on the 401 grid or null when the lap's position data is unavailable.
+function cumTimeTraceFor(fileIdx,lapIdx){
+  const c=cornersFor(fileIdx,lapIdx);if(!c)return null;
+  let P,T;
+  if(c.preset){ // embedded reference lap — decimated map_pts walk (no raw channels)
+    const pts=c.pkgLap.map_pts,tot=c.pkgLap.map_tot_s;if(!pts||!tot||pts.length<2)return null;
+    let L=0;P=[0];
+    for(let i=1;i<pts.length;i++){L+=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);P.push(L);}
+    const tot2=L||1;let m=-Infinity;for(let k=0;k<P.length;k++){m=Math.max(m,P[k]);P[k]=m/tot2;} // running max + normalize to 0..1
+    T=new Float64Array(P.length);const N=P.length-1;for(let i=0;i<N+1;i++)T[i]=tot*i/N;
+  } else {
+    const Pn=c.chans.get('Car Pos Norm');if(!Pn)return null;
+    P=Array.from(Pn.vals.subarray(c.a,c.b));
+    for(let w=0;w<P.length-1;w++)if(P[w+1]-P[w]<-0.5)for(let k=w+1;k<P.length;k++)P[k]+=1.0; // unwrap lap wrap
+    let m=-Infinity;for(let k=0;k<P.length;k++){m=Math.max(m,P[k]);P[k]=m;} // absorb tiny backward noise (np.maximum.accumulate)
+    T=new Float64Array(P.length);for(let i=0;i<P.length;i++)T[i]=i/c.freq;
+  }
+  const grid=[];for(let i=0;i<=400;i++)grid.push(i/400);
+  const ct=interp(grid,P,T);
+  return grid.map((g,i)=>[+(i/4).toFixed(2),+ct[i].toFixed(3)]);
+}
 // Pedal (brake + throttle) trace per lap on the same 401-point lap-position grid as speedTraceFor,
 // so pedal charts align with the speed/delta charts by % of lap. Brake Pos / Throttle Pos are
 // logged in percent (see brakingEvents thresholds). Returns {br:[[posPct,val]...], th:[...]},
