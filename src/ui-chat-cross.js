@@ -224,19 +224,20 @@ function runCrossComparison(refSel,chalSel){
     html+='.</div>';
   }
   const cR=cornersFor(A.fileIdx,A.lapIdx),cC=cornersFor(B.fileIdx,B.lapIdx); // clustered braking corners per lap
-  html+='<table style="margin-top:8px"><tr><th>metric</th><th>A (L'+A.lap+')</th><th>B (L'+B.lap+')</th><th>delta (B\u2212A)</th></tr>';
-  const row=(label,va,vb,unit,dec)=>{const d=vb-va;return '<tr><td>'+label+'</td><td>'+(isFinite(va)?va.toFixed(dec):'-')+' '+unit+'</td><td>'+(isFinite(vb)?vb.toFixed(dec):'-')+' '+unit+'</td><td class="'+(d>0?'err':'ok')+'">'+(d>0?'+':'')+d.toFixed(dec)+' '+unit+'</td></tr>';};
-  html+=row('time',A.dur,B.dur,'s',3);
-  html+=row('top speed',A.topSpeed,B.topSpeed,'km/h',1);
-  html+=row('max lat G',A.maxLatG,B.maxLatG,'G',2);
-  html+=row('max brake G',A.maxBrakeG,B.maxBrakeG,'G',2);
-  if(A.fuelUsed!=null&&B.fuelUsed!=null)html+=row('fuel used',A.fuelUsed,B.fuelUsed,'l',2);
+  // T-38 C1: delta column is A − B; only the time row is sign-colored (positive = A slower).
+  html+='<table style="margin-top:8px"><tr><th>metric</th><th>A (L'+A.lap+')</th><th>B (L'+B.lap+')</th><th>delta (A\u2212B)</th></tr>';
+  const row=(label,va,vb,unit,dec,signed)=>{const d=va-vb;return '<tr><td>'+label+'</td><td>'+(isFinite(va)?va.toFixed(dec):'-')+' '+unit+'</td><td>'+(isFinite(vb)?vb.toFixed(dec):'-')+' '+unit+'</td><td class="'+(signed?(d>0?'err':'ok'):'')+'">'+(d>0?'+':'')+d.toFixed(dec)+' '+unit+'</td></tr>';};
+  html+=row('time',A.dur,B.dur,'s',3,true);
+  html+=row('top speed',A.topSpeed,B.topSpeed,'km/h',1,false);
+  html+=row('max lat G',A.maxLatG,B.maxLatG,'G',2,false);
+  html+=row('max brake G',A.maxBrakeG,B.maxBrakeG,'G',2,false);
+  if(A.fuelUsed!=null&&B.fuelUsed!=null)html+=row('fuel used',A.fuelUsed,B.fuelUsed,'l',2,false);
   if(cR&&cC){
     const sR=smoothOf(cR),sC=smoothOf(cC);
-    html+=row('throttle jerk RMS',sR.thr_jerk,sC.thr_jerk,'%/s\u00b2',0);
-    html+=row('brake rate max',sR.brk_rate_max,sC.brk_rate_max,'%/s',0);
-    html+=row('steer RMS',sR.stw_rms,sC.stw_rms,'deg/s',1);
-    html+=row('steering corrections',sR.corr,sC.corr,'',0);
+    html+=row('throttle jerk RMS',sR.thr_jerk,sC.thr_jerk,'%/s\u00b2',0,false);
+    html+=row('brake rate max',sR.brk_rate_max,sC.brk_rate_max,'%/s',0,false);
+    html+=row('steer RMS',sR.stw_rms,sC.stw_rms,'deg/s',1,false);
+    html+=row('steering corrections',sR.corr,sC.corr,'',0,false);
   }
   html+='</table>';
   // speed trace overlay by lap position (both traces on the same 401-point pos grid so the delta chart aligns)
