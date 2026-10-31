@@ -268,15 +268,15 @@ function runCrossComparison(refSel,chalSel){
   if(ntr(mA.track)!==ntr(mB.track)){
     html+='<p class="hint" style="margin-top:8px">Tracks differ ('+esc(mA.track||'?')+' vs '+esc(mB.track||'?')+') \u2014 zone matching and racing-line comparison are not available across tracks (Skill 2 refuses cross-track comparisons).</p>';
   } else if(cR&&cC){
-    const zones=zonesFor(mB.track); // same track -> either file's table works; use the challenge file's like compare_laps uses metaA
-    const {pairs,ua,ub}=matchZones(cC.corners,cR.corners); // A = challenge (delta convention)
+    const zones=zonesFor(mB.track); // same track -> either file's table works (either file's meta)
+    const {pairs,ua,ub}=matchZones(cR.corners,cC.corners); // internal A−B = slotA−slotB (T-38 C2)
     const lapLenM=lapLengthM(B.fileIdx,B.lapIdx)||0;
-    const rows=buildRows(pairs,lapLenM,zones,rankCorners(cC.corners),mB.track);
-    html+='<ul class="hint" style="margin-top:10px;padding-left:20px;line-height:1.7">'+makeSummary(B.lap,A.lap,B.dur,A.dur,isFinite(B.startFuel)?B.startFuel:0,isFinite(A.startFuel)?A.startFuel:0,rows).map(p=>'<li>'+esc(p)+'</li>').join('')+'</ul>';
-    html+='<div style="margin-top:8px"><h3 style="margin-bottom:6px">Braking zones \u2014 delta = B \u2212 A</h3>';
-    html+='<table><tr><th>zone</th><th>point</th><th>entry km/h (R / C)</th><th>decel G (R / C)</th><th>dur s (R / C)</th></tr>';
+    const rows=buildRows(pairs,lapLenM,zones,rankCorners(cR.corners),mB.track);
+    html+='<ul class="hint" style="margin-top:10px;padding-left:20px;line-height:1.7">'+makeSummary(A.lap,B.lap,A.dur,B.dur,isFinite(A.startFuel)?A.startFuel:0,isFinite(B.startFuel)?B.startFuel:0,rows).map(p=>'<li>'+esc(p)+'</li>').join('')+'</ul>';
+    html+='<div style="margin-top:8px"><h3 style="margin-bottom:6px">Braking zones \u2014 delta = A \u2212 B</h3>';
+    html+='<table><tr><th>zone</th><th>point</th><th>entry km/h (A / B)</th><th>decel G (A / B)</th><th>dur s (A / B)</th></tr>';
     rows.forEach(r=>{
-      const cell=(va,vb,d,dec)=>'<td>'+vb.toFixed(dec)+' / '+va.toFixed(dec)+' <span class="'+(d>0?'err':'ok')+'">'+(d>0?'+':'')+d.toFixed(dec)+')</span></td>';
+      const cell=(va,vb,d,dec)=>'<td>'+va.toFixed(dec)+' / '+vb.toFixed(dec)+' <span class="'+(d>0?'err':'ok')+'">'+(d>0?'+':'')+d.toFixed(dec)+')</span></td>'; // A value first (T-38 C2)
       html+='<tr style="'+(r.key?'background:#1c2128;':'')+'"><td>'+(r.key?'<b>':'')+esc(r.label)+(r.key?'</b>':'')+'</td><td>'+r.tag+(Math.abs(r.dpos)>=0.1?' ('+(r.dpos>=0?'+':'')+r.dpos.toFixed(1)+' m)':'')+'</td>';
       html+=cell(r.entryA,r.entryB,r.dEntry,1)+cell(r.decelA,r.decelB,r.dDecel,2)+cell(r.durA,r.durB,r.dDur,2);
       html+='</tr>';
@@ -288,11 +288,11 @@ function runCrossComparison(refSel,chalSel){
     html+='</table><p class="hint">cells show A / B (delta) \u00b7 bold rows = key differences at Skill 2 thresholds \u00b7 hover a cause chip for the full diagnosis</p></div>';
     const leaks=rankLeaks(rows);
     if(leaks.length){
-      html+='<div style="margin-top:10px"><b>Top zone time deltas</b> (+ = B lost):<br>'+leaks.map(l=>'<span style="display:inline-block;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:1px 7px;margin:1px 4px 1px 0;font-size:11px;cursor:help" title="'+esc(l.causes.map(c=>c.name+': '+(c.delta>=0?'+':'')+c.delta.toFixed(1)+c.unit).join(' \u00b7 '))+'">'+esc(l.corner_label)+' <b>'+(l.time_total_s>=0?'+':'')+l.time_total_s.toFixed(2)+' s</b></span>').join(' ')+'</div>';
+      html+='<div style="margin-top:10px"><b>Top zone time deltas</b> (+ = A lost):<br>'+leaks.map(l=>'<span style="display:inline-block;background:#21262d;border:1px solid #30363d;border-radius:8px;padding:1px 7px;margin:1px 4px 1px 0;font-size:11px;cursor:help" title="'+esc(l.causes.map(c=>c.name+': '+(c.delta>=0?'+':'')+c.delta.toFixed(1)+c.unit).join(' \u00b7 '))+'">'+esc(l.corner_label)+' <b>'+(l.time_total_s>=0?'+':'')+l.time_total_s.toFixed(2)+' s</b></span>').join(' ')+'</div>';
     }
     if(ua.length||ub.length){
-      const rC=rankCorners(cC.corners),rR=rankCorners(cR.corners);
-      html+='<p class="hint" style="margin-top:8px">Unmatched braking events \u2014 only in B: '+(ua.map(a=>esc(zoneRef(a.pos,zones,rC.get(a)||0,mB.track))+' (entry '+a.entry.toFixed(1)+' km/h)').join(', ')||'none')+' \u00b7 only in A: '+(ub.map(b=>esc(zoneRef(b.pos,zones,rR.get(b)||0,mB.track))+' (entry '+b.entry.toFixed(1)+' km/h)').join(', ')||'none')+'</p>';
+      const rC=rankCorners(cC.corners),rR=rankCorners(cR.corners); // T-38 C2: ua = unmatched in slot A (cR), ub = unmatched in slot B (cC)
+      html+='<p class="hint" style="margin-top:8px">Unmatched braking events \u2014 only in A: '+(ua.map(a=>esc(zoneRef(a.pos,zones,rR.get(a)||0,mB.track))+' (entry '+a.entry.toFixed(1)+' km/h)').join(', ')||'none')+' \u00b7 only in B: '+(ub.map(b=>esc(zoneRef(b.pos,zones,rC.get(b)||0,mB.track))+' (entry '+b.entry.toFixed(1)+' km/h)').join(', ')||'none')+'</p>';
     }
     // track-delta map — per-point speed delta on the shared 401 grid (preset-aware: precomputed line_grid + traces.speed for embedded reference laps)
     const oA=outlineFor(A.fileIdx,A.lapIdx),oB=outlineFor(B.fileIdx,B.lapIdx);

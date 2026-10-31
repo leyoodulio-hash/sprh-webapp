@@ -382,7 +382,7 @@ function drawPedalLines(cRef,cChal){
       const h=v=>v.toFixed(1); // ground speed, km/h
       const sl=p=>isFinite(p[6])?p[6].toFixed(1)+'·'+p[7].toFixed(1)+'·'+p[8].toFixed(1)+'·'+p[9].toFixed(1):'\u2014'; // |slip| FL/FR/RL/RR deg
       const tA=D.tR*na.i/Math.max(1,D.oa.length-1),tB=D.tC*nb.i/Math.max(1,D.ob.length-1); // cumulative lap time at each car's hovered point (uniform-rate decimation)
-      const dt=tA-tB; // Δt A−B: negative when B is slower at this point (user spec 2026-10-30) — inverse of the section's B−A convention
+      const dt=tA-tB; // Δt A−B per the section's delta convention (T-38 C2): negative when B is slower at this point
       tip.innerHTML='Lap '+(na.i/(D.oa.length-1)*100).toFixed(0)+'%<br>Brake ('+f(na.p[2],na.p)+'/&nbsp;'+f(nb.p[2],nb.p)+')<br>Throttle ('+f(na.p[3],na.p)+'/&nbsp;'+f(nb.p[3],nb.p)+')<br>Steer ('+g(na.p[4])+'/&nbsp;'+g(nb.p[4])+')<br>Speed ('+h(na.p[5])+'/&nbsp;'+h(nb.p[5])+' km/h)<br>\u0394t A\u2212B (\u2212 = B slower): '+(dt>=0?'+':'')+dt.toFixed(3)+' s<br>Slip ° FL/FR/RL/RR ('+sl(na.p)+' / '+sl(nb.p)+')';
       tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
     });
@@ -453,13 +453,13 @@ function updateXcmpSliderRead(){
   const aFin=t-tR>1e-9?' <b>(finished)</b>':''; // faster car flags finished once past its lap time
   const bFin=t-tC>1e-9?' <b>(finished)</b>':'';
   const pA=D.oa[iR],pB=D.ob[iC];
-  let dl=''; // live Δ(B−A) at clock-t: speed/brake/throttle deltas + chord gap (m) — B−A per the section's delta convention
+  let dl=''; // live Δ(A−B) at clock-t: speed/brake/throttle deltas + chord gap (m) — A−B per the section's delta convention (T-38 C2)
   if(pA&&pB&&isFinite(pA[5])&&isFinite(pB[5])){
     const sg=v=>(v>=0?'+':'')+v;
-    const dv=pB[5]-pA[5];
-    dl=' &nbsp;\u00b7&nbsp; \u0394(B\u2212A): speed '+(dv>=0?'+':'')+dv.toFixed(1)+' km/h';
-    if(pA[2]!=null&&pB[2]!=null)dl+=' \u00b7 brake '+sg(Math.round(pB[2]-pA[2]))+'%';
-    if(pA[3]!=null&&pB[3]!=null)dl+=' \u00b7 throttle '+sg(Math.round(pB[3]-pA[3]))+'%';
+    const dv=pA[5]-pB[5];
+    dl=' &nbsp;\u00b7&nbsp; \u0394(A\u2212B): speed '+(dv>=0?'+':'')+dv.toFixed(1)+' km/h';
+    if(pA[2]!=null&&pB[2]!=null)dl+=' \u00b7 brake '+sg(Math.round(pA[2]-pB[2]))+'%';
+    if(pA[3]!=null&&pB[3]!=null)dl+=' \u00b7 throttle '+sg(Math.round(pA[3]-pB[3]))+'%';
     dl+=' \u00b7 gap '+Math.hypot(pB[0]-pA[0],pB[1]-pA[1]).toFixed(1)+' m'; // chord between markers, same-track frame
   }
   if(el)el.innerHTML='Clock <b>'+t.toFixed(1)+' s</b> of '+T.toFixed(1)+' s &nbsp;\u00b7&nbsp; A @lap '+(iR/Math.max(1,D.oa.length-1)*100).toFixed(1)+'%'+aFin+': '+f(D.oa[iR])+' &nbsp;\u00b7&nbsp; B @lap '+(iC/Math.max(1,D.ob.length-1)*100).toFixed(1)+'%'+bFin+': '+f(D.ob[iC])+dl;
