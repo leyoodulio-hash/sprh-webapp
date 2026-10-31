@@ -17,18 +17,18 @@ function drawComparisonCharts(speedA,speedB,lapAIdx,lapBIdx,cv,labelA,labelB,min
   c.strokeStyle='#5fd08a';c.lineWidth=1.8;c.beginPath();let started=false;
   speedA.forEach(pt=>{if(!isFinite(pt[0])||!isFinite(pt[1]))return;const x=padL+pt[0]*(W-padL-padR)/100,y=yOf(pt[1]);started?c.lineTo(x,y):c.moveTo(x,y);started=true;});
   c.stroke();
-  // lap B (orange)
-  c.strokeStyle='#ffb86c';c.lineWidth=1.8;c.beginPath();started=false;
+  // lap B (white — reference, T-38 C3)
+  c.strokeStyle='#e6edf3';c.lineWidth=1.8;c.beginPath();started=false;
   speedB.forEach(pt=>{if(!isFinite(pt[0])||!isFinite(pt[1]))return;const x=padL+pt[0]*(W-padL-padR)/100,y=yOf(pt[1]);started?c.lineTo(x,y):c.moveTo(x,y);started=true;});
   c.stroke();
   // legend
   c.fillStyle='#5fd08a';c.fillRect(padL+4,H-padT-14,12,4);
   c.fillStyle='#eaf1f9';c.font='11px Segoe UI';c.fillText(labelA,padL+20,H-padT-11);
-  c.fillStyle='#ffb86c';c.fillRect(padL+70,H-padT-14,12,4);
+  c.fillStyle='#e6edf3';c.fillRect(padL+70,H-padT-14,12,4);
   c.fillStyle='#eaf1f9';c.fillText(labelB,padL+94,H-padT-11);
 }
 function drawComparisonDeltaChart(speedA,speedB,lapAIdx,lapBIdx,cv,caption){
-  cv=cv||$('cmpDeltaChart');caption=caption||'Green = Lap B faster · Red = Lap A faster';if(!cv)return;
+  cv=cv||$('cmpDeltaChart');caption=caption||'Green = Lap A faster · Red = Lap B faster';if(!cv)return;
   const c=cv.getContext('2d'),W=cv.width,H=cv.height;
   const padL=46,padR=10,padT=14,padB=30;
   const maxDelta=20,plotH=H-padT-padB;
@@ -40,12 +40,12 @@ function drawComparisonDeltaChart(speedA,speedB,lapAIdx,lapBIdx,cv,caption){
     c.fillStyle='#8b949e';c.fillText(String(v),10,y+4);}
   for(let p=0;p<=10;p+=2){const x=padL+(p/10)*(W-padL-padR);c.strokeStyle='#21262d';c.beginPath();c.moveTo(x,padT);c.lineTo(x,H-padB);c.stroke();
     c.fillStyle='#8b949e';c.fillText((p*10)+'%',x-10,H-padB+18);}
-  // delta line — plots B − A (speed terms: positive up = B faster); green = B faster, red = A slower
+  // delta line — plots A − B (positive up = A faster); green = A faster, red = B faster (T-38 C3)
   const n=Math.min(speedA.length,speedB.length);
   let prev=null;
   for(let i=0;i<n;i++){
     if(!isFinite(speedA[i][1])||!isFinite(speedB[i][1])){prev=null;continue;}
-    const delta=speedB[i][1]-speedA[i][1]; // B − A
+    const delta=speedA[i][1]-speedB[i][1]; // A − B
     const x=padL+speedA[i][0]*(W-padL-padR)/100,y=yOf(delta);
     if(prev){c.strokeStyle=delta>=0?'#5fd08a':'#ff5c39';c.lineWidth=1.6;c.beginPath();c.moveTo(prev[0],prev[1]);c.lineTo(x,y);c.stroke();}
     prev=[x,y];
@@ -86,7 +86,7 @@ function drawPedalChart(pedalA,pedalB,cv,labelA,labelB){
 }
 
 // Cross-session track-delta map: per-point speed delta on the shared 401 grid, colored on the
-// A lap's outline. Green = B faster / Red = A faster.
+// A lap's outline. Green = A faster / Red = B faster (T-38 C3).
 // Fixes a latent alignment issue of the legacy in-file map, where the ~700-pt resampled outline was
 // indexed against per-raw-sample speed traces (colors came from ~3× earlier in the lap than drawn).
 function drawCrossDeltaMap(outline,speedA,speedB){
@@ -107,15 +107,15 @@ function drawCrossDeltaMap(outline,speedA,speedB){
     for(let i=0;i<n-1;i++){
       const pa=outline[i],pb=outline[i+1];
       if(!isFinite(pa[0])||!isFinite(pa[1])||!isFinite(pb[0])||!isFinite(pb[1]))continue;
-      const delta=speedB[i][1]-speedA[i][1]; // positive = B faster
+      const delta=speedA[i][1]-speedB[i][1]; // positive = A faster
       c.strokeStyle=delta>=0?'#5fd08a':'#ff5c39';
       c.lineWidth=4;
       c.beginPath();c.moveTo(X(pa[0]),Y(pb[1]));c.lineTo(X(pb[0]),Y(pb[1]));c.stroke();
     }
     const sp=outline[0];
     if(isFinite(sp[0])&&isFinite(sp[1])){c.fillStyle='#e6edf3';c.fillRect(X(sp[0])-4,Y(sp[1])-4,8,8);}
-    c.fillStyle='#5fd08a';c.font='12px Segoe UI';c.fillText('Green = B faster',10,18);
-    c.fillStyle='#ff5c39';c.fillText('Red = A faster',10,34);
+    c.fillStyle='#5fd08a';c.font='12px Segoe UI';c.fillText('Green = A faster',10,18);
+    c.fillStyle='#ff5c39';c.fillText('Red = B faster',10,34);
     c.fillStyle='#8b949e';c.font='11px Segoe UI';
     c.fillText('scroll = zoom · drag = pan · dblclick = reset',10,H-12);
   }

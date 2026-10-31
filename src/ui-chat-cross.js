@@ -248,12 +248,12 @@ function runCrossComparison(refSel,chalSel){
     html+='<div style="margin-top:10px"><h3 style="margin-bottom:6px">Delta speed (B \u2212 A)</h3>';
     html+='<canvas id="cmpDeltaChart" width="700" height="120" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas></div>';
   }
-  // driver inputs overlay by lap position — same 401-point pos grid and the same green/orange
-  // line style as the speed chart above (drawComparisonCharts, Ref = A / green, Chal = B / orange)
+  // driver inputs overlay by lap position — same 401-point pos grid and the same green/white
+  // line style as the speed chart above (drawComparisonCharts: A / green, B / white)
   const tA=pedalTraceFor(A.fileIdx,A.lapIdx),tB=pedalTraceFor(B.fileIdx,B.lapIdx);
   if(tA&&tB){
     html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Input Overlay \u2014 driver inputs</h3>';
-    html+='<p class="hint" style="margin:2px 0 8px">same lap-position grid as the speed chart \u00b7 green = A \u00b7 orange = B</p>';
+    html+='<p class="hint" style="margin:2px 0 8px">same lap-position grid as the speed chart \u00b7 green = A \u00b7 white = B</p>';
     html+='<div><b style="font-size:12px;color:#eaf1f9">Throttle by lap position (0\u2013100%)</b>';
     html+='<canvas id="cmpThrChart" width="700" height="180" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px;display:block;margin-top:4px"></canvas></div>';
     html+='<div style="margin-top:10px"><b style="font-size:12px;color:#eaf1f9">Brake by lap position (0\u2013100%)</b>';
@@ -316,7 +316,7 @@ function runCrossComparison(refSel,chalSel){
     html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Setup</h3><ul class="hint" style="margin:0;padding-left:18px;line-height:1.8">'+slines.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul><p class="hint">Setup values from the attached car-setup file(s); the value in (parens) = B lap. Flags are candidates to verify, not verdicts.</p></div>';
   }
   $('crossSummary').innerHTML=html;
-  if(sA&&sB){drawComparisonCharts(sA,sB,A.lap,B.lap,$('cmpSpeedChart'),'A','B');drawComparisonDeltaChart(sA,sB,A.lap,B.lap,$('cmpDeltaChart'),'Green = B faster \u00b7 Red = A faster');}
+  if(sA&&sB){drawComparisonCharts(sA,sB,A.lap,B.lap,$('cmpSpeedChart'),'A','B');drawComparisonDeltaChart(sA,sB,A.lap,B.lap,$('cmpDeltaChart'),'Green = A faster \u00b7 Red = B faster');}
   if(tA&&tB){drawComparisonCharts(tA.th,tB.th,A.lap,B.lap,$('cmpThrChart'),'A','B');drawComparisonCharts(tA.br,tB.br,A.lap,B.lap,$('cmpBrkChart'),'A','B');}
   const stA=steerTraceFor(A.fileIdx,A.lapIdx),stB=steerTraceFor(B.fileIdx,B.lapIdx);
   if(stA&&stB){let lo=0;stA.forEach(p=>{if(p[1]<lo)lo=p[1];});stB.forEach(p=>{if(p[1]<lo)lo=p[1];});
