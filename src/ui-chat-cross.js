@@ -249,6 +249,12 @@ function runCrossComparison(selA,selB){
     html+='<div style="margin-top:10px"><h3 style="margin-bottom:6px">Delta speed (A \u2212 B)</h3>';
     html+='<canvas id="cmpDeltaChart" width="700" height="120" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas></div>';
   }
+  // Cumulative time delta A−B over lap position (running gap) — exact sample times on the shared grid
+  const cumA=cumTimeTraceFor(A.fileIdx,A.lapIdx),cumB=cumTimeTraceFor(B.fileIdx,B.lapIdx);
+  if(cumA&&cumB){
+    html+='<div style="margin-top:10px"><h3 style="margin-bottom:6px">Cumulative time delta (A \u2212 B) over lap position</h3>';
+    html+='<canvas id="cmpCumDeltaChart" width="700" height="140" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas></div>';
+  }
   // driver inputs overlay by lap position — same 401-point pos grid and the same green/white
   // line style as the speed chart above (drawComparisonCharts: A / green, B / white)
   const tA=pedalTraceFor(A.fileIdx,A.lapIdx),tB=pedalTraceFor(B.fileIdx,B.lapIdx);
@@ -318,6 +324,7 @@ function runCrossComparison(selA,selB){
   }
   $('crossSummary').innerHTML=html;
   if(sA&&sB){drawComparisonCharts(sA,sB,A.lap,B.lap,$('cmpSpeedChart'),'A','B');drawComparisonDeltaChart(sA,sB,A.lap,B.lap,$('cmpDeltaChart'),'Green = A faster \u00b7 Red = B faster');}
+  if(cumA&&cumB){drawCumDeltaChart($('cmpCumDeltaChart'),cumA,cumB);}
   if(tA&&tB){drawComparisonCharts(tA.th,tB.th,A.lap,B.lap,$('cmpThrChart'),'A','B');drawComparisonCharts(tA.br,tB.br,A.lap,B.lap,$('cmpBrkChart'),'A','B');}
   const stA=steerTraceFor(A.fileIdx,A.lapIdx),stB=steerTraceFor(B.fileIdx,B.lapIdx);
   if(stA&&stB){let lo=0;stA.forEach(p=>{if(p[1]<lo)lo=p[1];});stB.forEach(p=>{if(p[1]<lo)lo=p[1];});
