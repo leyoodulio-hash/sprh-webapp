@@ -53,6 +53,42 @@ function drawComparisonDeltaChart(speedA,speedB,lapAIdx,lapBIdx,cv,caption){
   c.fillStyle='#8b949e';c.font='11px Segoe UI';c.textAlign='right';
   c.fillText(caption,W-padR,padT+10);
 }
+// Cumulative time delta A − B over lap position (running-gap chart) — data from cumTimeTraceFor:
+// y = cumulative seconds of A minus B at each 401-grid point (positive = A behind / slower so far).
+// The zero line is always drawn (dashed); segments are green where A is gaining on B (delta
+// falling), red where losing. Y range fits the data but always includes zero.
+function drawCumDeltaChart(cv,cumA,cumB){
+  cv=cv||$('cmpCumDeltaChart');if(!cv||!cumA||!cumB)return;
+  const c=cv.getContext('2d'),W=cv.width,H=cv.height;
+  const padL=46,padR=10,padT=14,padB=30,plotH=H-padT-padB;
+  const n=Math.min(cumA.length,cumB.length); // 401
+  const d=new Array(n);for(let i=0;i<n;i++)d[i]=cumA[i][1]-cumB[i][1]; // A − B (positive = A slower)
+  cv.__cumDelta=d; // probe access: cumulative delta at each grid point
+  let lo=Math.min(0,...d),hi=Math.max(0,...d);
+  if(hi-lo<1){lo-=0.5;hi+=0.5;} // degenerate guard (near-equal laps)
+  const pad=(hi-lo)*0.12;lo-=pad;hi+=pad;
+  const X=p=>padL+(p/100)*(W-padL-padR),Y=v=>H-padB-((v-lo)/(hi-lo))*plotH;
+  c.clearRect(0,0,W,H);c.font='11px Segoe UI';
+  // y grid: nice step from {0.5,1,2,5,10} s; the zero line is dashed + brighter
+  const span=hi-lo,mag=Math.pow(10,Math.floor(Math.log10(span/6)));const nr=(span/6)/mag;
+  const step=(nr<1.5?1:nr<3.5?2:nr<7.5?5:10)*mag;
+  for(let v=Math.ceil(lo/step-1e-9)*step;v<=hi+1e-9;v+=step){const y=Y(v);
+    const zero=Math.abs(v)<step/2;
+    c.strokeStyle=zero?'#8b949e':'#21262d';c.setLineDash(zero?[4,3]:[]);
+    c.beginPath();c.moveTo(padL,y);c.lineTo(W-padR,y);c.stroke();c.setLineDash([]);
+    c.fillStyle='#8b949e';c.fillText((v>0?'+':'')+v.toFixed(step<1?1:0),10,y+4);}
+  for(let p=0;p<=10;p+=2){const x=X(p*10);c.strokeStyle='#21262d';c.beginPath();c.moveTo(x,padT);c.lineTo(x,H-padB);c.stroke();
+    c.fillStyle='#8b949e';c.fillText((p*10)+'%',x-10,H-padB+18);}
+  // delta line — per-segment color: green where A is gaining (delta falling), red where losing
+  let prev=null;
+  for(let i=0;i<n;i++){
+    const x=X(cumA[i][0]),y=Y(d[i]);
+    if(prev){c.strokeStyle=d[i]<=d[i-1]?'#5fd08a':'#ff5c39';c.lineWidth=1.6;c.beginPath();c.moveTo(prev[0],prev[1]);c.lineTo(x,y);c.stroke();}
+    prev=[x,y];
+  }
+  c.fillStyle='#8b949e';c.font='11px Segoe UI';c.textAlign='right';
+  c.fillText('green = A gaining · red = A losing',W-padR,padT+10);
+}
 // Brake + throttle overlay for two laps on the common lap-position grid (pedalTraceFor output).
 // Brake is stroked per segment with alpha AND line width proportional to application, so the line
 // fades and thins as the pedal eases off; throttle is a translucent fill. Solid = A, dashed = B.
