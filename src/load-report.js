@@ -169,11 +169,11 @@ function loadFile(idx){
   const cle=$('coachLevel');if(cle)cle.textContent='Driver stage: '+state.level.sub+' - '+state.level.note;
 // Merged Compare (chunk 4, 2026-10-27): the legacy in-file select panel is gone - a report with >1 lap
 // auto-fills the unified A/B slots and renders the comparison into #crossSummary.
-// Defaults mirror the old panel: A = best lap, B = second-to-last lap (fall back to index 0 if that IS the best).
+// T-38 C5: A = comparison lap (second-to-last), B = reference (best lap); fall back to index 0 if the second-to-last IS the best.
   if(state.report&&state.report.laps.length>1){
     const r=state.report;
     let bi=r.laps.length-2;if(bi===r.bestIdx)bi=0;
-    crossSel={ref:{fileIdx:idx,lapIdx:r.bestIdx},chal:{fileIdx:idx,lapIdx:bi}};
+    crossSel={ref:{fileIdx:idx,lapIdx:bi},chal:{fileIdx:idx,lapIdx:r.bestIdx}};
     renderCross();
     runCrossComparison(crossSel.ref,crossSel.chal);
   }

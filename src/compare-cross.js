@@ -199,7 +199,7 @@ function outlineFor(fileIdx,lapIdx){
     return Array.from(X).map((x,i)=>[+(-x).toFixed(2),+(-Y[i]).toFixed(2)]);
   }catch(e){return null;}
 }
-function lineOffsetStats(gA,gB){ // gA/gB = [x[],y[]] on the shared 401 grid; A=challenge, B=reference (offsets are absolute)
+function lineOffsetStats(gA,gB){ // gA/gB = [x[],y[]] on the shared 401 grid; slot A / slot B (offsets are absolute)
   const N=gA[0].length;let sum=0,maxV=-Infinity,maxI=0;
   for(let i=0;i<N;i++){const d=Math.hypot(gA[0][i]-gB[0][i],gA[1][i]-gB[1][i]);sum+=d;if(d>maxV){maxV=d;maxI=i;}}
   return{meanAbs:sum/N,max:maxV,maxPos:maxI/(N-1)};
@@ -209,10 +209,10 @@ function lineOffset(chA,a1,b1,chB,a2,b2){
   return lineOffsetStats(lines[0],lines[1]);
 }
 // Preset-aware racing-line offset: precomputed line_grid for embedded reference laps, raw grid otherwise (mixed OK).
-function lineOffsetOf(cR,cC){ // cR = reference corner ctx, cC = challenge (offset is absolute, order only fixes A/B naming)
+function lineOffsetOf(cA,cB){ // cA/cB = slot A / slot B corner ctx (offset is absolute; arg order fixes A/B naming)
   const flat=f=>{const N=f.length/2;return[f.slice(0,N),f.slice(N)];};
-  const gA=cC.preset?flat(cC.pkgLap.line_grid):lineGridRaw(cC.chans,cC.a,cC.b);
-  const gB=cR.preset?flat(cR.pkgLap.line_grid):lineGridRaw(cR.chans,cR.a,cR.b);
+  const gA=cA.preset?flat(cA.pkgLap.line_grid):lineGridRaw(cA.chans,cA.a,cA.b);
+  const gB=cB.preset?flat(cB.pkgLap.line_grid):lineGridRaw(cB.chans,cB.a,cB.b);
   return lineOffsetStats(gA,gB);
 }
 // Clustered braking corners + sample range for one lap selection in a loaded file.
@@ -382,8 +382,8 @@ function drawPedalLines(cRef,cChal){
       const h=v=>v.toFixed(1); // ground speed, km/h
       const sl=p=>isFinite(p[6])?p[6].toFixed(1)+'·'+p[7].toFixed(1)+'·'+p[8].toFixed(1)+'·'+p[9].toFixed(1):'\u2014'; // |slip| FL/FR/RL/RR deg
       const tA=D.tR*na.i/Math.max(1,D.oa.length-1),tB=D.tC*nb.i/Math.max(1,D.ob.length-1); // cumulative lap time at each car's hovered point (uniform-rate decimation)
-      const dt=tA-tB; // Δt A−B per the section's delta convention (T-38 C2): negative when B is slower at this point
-      tip.innerHTML='Lap '+(na.i/(D.oa.length-1)*100).toFixed(0)+'%<br>Brake ('+f(na.p[2],na.p)+'/&nbsp;'+f(nb.p[2],nb.p)+')<br>Throttle ('+f(na.p[3],na.p)+'/&nbsp;'+f(nb.p[3],nb.p)+')<br>Steer ('+g(na.p[4])+'/&nbsp;'+g(nb.p[4])+')<br>Speed ('+h(na.p[5])+'/&nbsp;'+h(nb.p[5])+' km/h)<br>\u0394t A\u2212B (\u2212 = B slower): '+(dt>=0?'+':'')+dt.toFixed(3)+' s<br>Slip ° FL/FR/RL/RR ('+sl(na.p)+' / '+sl(nb.p)+')';
+      const dt=tA-tB; // Δt A−B per the section's delta convention: positive when A is slower at this point (aligned T-38 C5)
+      tip.innerHTML='Lap '+(na.i/(D.oa.length-1)*100).toFixed(0)+'%<br>Brake ('+f(na.p[2],na.p)+'/&nbsp;'+f(nb.p[2],nb.p)+')<br>Throttle ('+f(na.p[3],na.p)+'/&nbsp;'+f(nb.p[3],nb.p)+')<br>Steer ('+g(na.p[4])+'/&nbsp;'+g(nb.p[4])+')<br>Speed ('+h(na.p[5])+'/&nbsp;'+h(nb.p[5])+' km/h)<br>\u0394t A\u2212B (+ = A slower): '+(dt>=0?'+':'')+dt.toFixed(3)+' s<br>Slip ° FL/FR/RL/RR ('+sl(na.p)+' / '+sl(nb.p)+')';
       tip.style.display='block';tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+14)+'px';
     });
     cv.addEventListener('mouseleave',hide);

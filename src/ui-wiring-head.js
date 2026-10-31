@@ -34,7 +34,7 @@ function buildCopyBriefing(){
   let cross=null;
   if(typeof crossSel!=='undefined'&&crossSel&&crossSel.ref&&crossSel.chal){try{cross=crossReviewPrompt(crossSel.ref,crossSel.chal);}catch(e){cross=null;}}
   if(cross){
-    L.push('MODE: A/B comparison - telemetry data for TWO laps is provided below (A = challenge lap to be coached, B = reference lap for delta context).');
+    L.push('MODE: A/B comparison - telemetry data for TWO laps is provided below; all deltas are A \u2212 B (positive = A slower).');
     L.push('');
     L.push(cross);
   } else {

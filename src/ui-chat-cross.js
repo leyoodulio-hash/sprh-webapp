@@ -153,8 +153,8 @@ async function sendChat(overrideText){
 /* ---- cross-session lap comparison (T-7): UI wiring + report rendering ---- */
 // Compare one lap from any loaded .ld session against a lap from another (or the same) session,
 // selected by drag-and-drop into the A / B slots. Browser mirror of Skill 2
-// (compare_laps.py). Delta convention: B − A (the B lap plays 'A' in compare_laps.py;
-// positive = challenge slower). The analysis functions live in the core section above so they
+// (compare_laps.py). Delta convention: A − B (positive = A slower). The analysis functions
+// live in the core section above so they
 // can be tested headlessly against compare_laps.py.
 function shortName(n){n=n||'?';return n.length>34?n.slice(0,31)+'\u2026':n;}
 let crossSel={ref:null,chal:null}; // {fileIdx,lapIdx} per slot
@@ -166,8 +166,9 @@ function renderCross(){
     const sel=crossSel[role];const d=document.createElement('div');d.className='xslot'+(sel?' filled':'');d.dataset.role=role;
     let inner;
     const rec=sel?lapRecord(sel.fileIdx,sel.lapIdx):null;
-    if(rec){inner='<b>'+(role==='ref'?'A':'B')+'</b><span class="xs-lap">L'+rec.lap+' \u00b7 '+fmtLap(rec.dur)+'</span><span class="xs-file">'+esc(shortName(state.files[sel.fileIdx].name))+'</span>';}
-    else inner='<b>'+(role==='ref'?'A':'B')+'</b><span class="xs-empty">drag a lap here</span>';
+    const lbl=role==='ref'?'A \u00b7 Comparison':'B \u00b7 Reference'; // T-38 C5: role words on the slot cards
+    if(rec){inner='<b>'+lbl+'</b><span class="xs-lap">L'+rec.lap+' \u00b7 '+fmtLap(rec.dur)+'</span><span class="xs-file">'+esc(shortName(state.files[sel.fileIdx].name))+'</span>';}
+    else inner='<b>'+lbl+'</b><span class="xs-empty">drag a lap here</span>';
     d.innerHTML=inner;
     d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over');});
     d.addEventListener('dragleave',()=>d.classList.remove('over'));
@@ -207,15 +208,15 @@ function assignCross(role,data){
   renderCross();
   if(crossSel.ref&&crossSel.chal)runCrossComparison(crossSel.ref,crossSel.chal);
 }
-function runCrossComparison(refSel,chalSel){
-  const A=lapRecord(refSel.fileIdx,refSel.lapIdx),B=lapRecord(chalSel.fileIdx,chalSel.lapIdx);
+function runCrossComparison(selA,selB){
+  const A=lapRecord(selA.fileIdx,selA.lapIdx),B=lapRecord(selB.fileIdx,selB.lapIdx);
   if(!A||!B)return;
-  // delta convention everywhere: B − A (positive = B slower / lost time; green = B faster).
-  const ds=B.dur-A.dur;
+  // delta convention everywhere: A − B (positive = A slower / lost time; green = A faster).
+  const ds=A.dur-B.dur;
   // name goes OUTSIDE the parens: shortName() truncation can cut a filename mid-parenthesis
   // (e.g. "(reflap01)" -> "(refla…)") and the closing paren then visually attaches to it).
-  let html='<div class="'+(ds>0?'err':'ok')+'"><b>A</b> L'+A.lap+' \u00b7 '+fmtLap(A.dur)+' \u2014 '+esc(shortName(state.files[A.fileIdx].name))+' &nbsp;vs&nbsp; <b>B</b> L'+B.lap+' \u00b7 '+fmtLap(B.dur)+' \u2014 '+esc(shortName(state.files[B.fileIdx].name))+'</div>';
-  html+='<div class="'+(ds>0?'err':'ok')+'" style="margin-top:4px">delta (chal \u2212 ref): '+(ds>0?'+':'')+ds.toFixed(3)+' s \u2014 <b>'+(ds>0?'challenge slower':(ds<0?'challenge faster':'equal'))+'</b></div>';
+  let html='<div class="'+(ds>0?'err':'ok')+'"><b>A</b><span class="hint"> (Comp)</span> L'+A.lap+' \u00b7 '+fmtLap(A.dur)+' \u2014 '+esc(shortName(state.files[A.fileIdx].name))+' &nbsp;vs&nbsp; <b>B</b><span class="hint"> (Ref)</span> L'+B.lap+' \u00b7 '+fmtLap(B.dur)+' \u2014 '+esc(shortName(state.files[B.fileIdx].name))+'</div>';
+  html+='<div class="'+(ds>0?'err':'ok')+'" style="margin-top:4px">delta (A \u2212 B): '+(ds>0?'+':'')+ds.toFixed(3)+' s \u2014 <b>'+(ds>0?'A slower':(ds<0?'A faster':'equal'))+'</b></div>';
   // fuel disclosure - cross-session deltas are confounded by car weight
   if(A.startFuel!=null&&B.startFuel!=null){
     const fd=A.startFuel-B.startFuel;
@@ -245,7 +246,7 @@ function runCrossComparison(refSel,chalSel){
   if(sA&&sB){
     html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Speed by lap position (0\u2013100%)</h3>';
     html+='<canvas id="cmpSpeedChart" width="700" height="180" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas></div>';
-    html+='<div style="margin-top:10px"><h3 style="margin-bottom:6px">Delta speed (B \u2212 A)</h3>';
+    html+='<div style="margin-top:10px"><h3 style="margin-bottom:6px">Delta speed (A \u2212 B)</h3>';
     html+='<canvas id="cmpDeltaChart" width="700" height="120" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas></div>';
   }
   // driver inputs overlay by lap position — same 401-point pos grid and the same green/white
@@ -300,7 +301,7 @@ function runCrossComparison(refSel,chalSel){
       oT=oA;
       html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Track delta map — per-point speed</h3>';
       html+='<canvas id="cmpTrackMap" width="700" height="500" style="width:100%;max-width:700px;background:#0d1117;border:1px solid #21262d;border-radius:8px"></canvas>';
-      html+='<p class="hint">Green = B faster · Red = A faster · scroll = zoom · drag = pan · dblclick = reset</p></div>';
+      html+='<p class="hint">Green = A faster · Red = B faster · scroll = zoom · drag = pan · dblclick = reset</p></div>';
     }
     const lo=lineOffsetOf(cR,cC); // preset-aware: precomputed line_grid for embedded reference laps
     html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Racing line (pedal-colored \u00b7 bright = 100% application)</h3>';
@@ -310,8 +311,8 @@ function runCrossComparison(refSel,chalSel){
     html+='<div id="cmpSliderRead" class="hint" style="margin-top:6px;font-size:12px;line-height:1.6"></div>';
     html+='</div>';
   }
-  // setup details (cross-section feature): formatted Ref vs Chal setup lines, challenge value in parens
-  const slines=crossSetupLines(refSel,chalSel);
+  // setup details (cross-section feature): formatted A vs B setup lines, B value in parens
+  const slines=crossSetupLines(selA,selB);
   if(slines.length){
     html+='<div style="margin-top:12px"><h3 style="margin-bottom:6px">Setup</h3><ul class="hint" style="margin:0;padding-left:18px;line-height:1.8">'+slines.map(l=>'<li>'+esc(l)+'</li>').join('')+'</ul><p class="hint">Setup values from the attached car-setup file(s); the value in (parens) = B lap. Flags are candidates to verify, not verdicts.</p></div>';
   }

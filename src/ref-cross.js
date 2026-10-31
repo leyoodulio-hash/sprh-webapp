@@ -89,57 +89,57 @@ function steerTraceFor(fileIdx,lapIdx){
   return grid.map((g,i)=>[+(g*100).toFixed(2),+sv[i].toFixed(1)]);
 }
 /* ---- pre-canned cross-session LLM review (core: testable headlessly, no DOM) ----
-   Builds the canned "Braking Analysis between reference and challenge" prompt plus a
-   plain-text digest of the Reference vs Challenge comparison. Delta convention:
-   Challenge - Reference (positive = challenge slower). Returns null when either slot is empty. */
-function crossReviewPrompt(refSel, chalSel){
-  if(!refSel||!chalSel)return null;
-  const R=lapRecord(refSel.fileIdx,refSel.lapIdx),Ch=lapRecord(chalSel.fileIdx,chalSel.lapIdx);
-  if(!R||!Ch)return null;
-  const ds=Ch.dur-R.dur;
+   Builds the canned "Braking Analysis between lap A and lap B" prompt plus a
+   plain-text digest of the A vs B comparison. Delta convention: A - B
+   (positive = A slower). Returns null when either slot is empty. */
+function crossReviewPrompt(selA, selB){
+  if(!selA||!selB)return null;
+  const A=lapRecord(selA.fileIdx,selA.lapIdx),B=lapRecord(selB.fileIdx,selB.lapIdx);
+  if(!A||!B)return null;
+  const ds=A.dur-B.dur; // A−B (T-38 C4)
   const fname=fi=>{const f=state.files[fi];return f?f.name:'?';};
   const L=[];
-  L.push('PRE-CANNED REVIEW REQUEST: Braking Analysis between reference and challenge.');
-  L.push('Using ONLY the measured cross-session data below, analyze the braking of the Challenge lap versus the Reference lap:');
+  L.push('PRE-CANNED REVIEW REQUEST: Braking Analysis between lap A and lap B.');
+  L.push('Using ONLY the measured cross-session data below, analyze the braking of lap A versus lap B:');
   L.push('- for each braking zone, compare braking point, entry speed, deceleration and brake duration;');
-  L.push('- state which zones cost the Challenge lap the most time and the likely cause of each (late point that didn\'t carry, trail-brake release, coast gap, entry-speed loss);');
+  L.push('- state which zones cost lap A the most time and the likely cause of each (late point that didn\'t carry, trail-brake release, coast gap, entry-speed loss);');
   L.push('- account for the start-of-lap fuel difference as a car-weight confounder when interpreting the time delta;');
-  L.push('- finish with 2-3 concrete braking corrections for the Challenge lap. Cite the measured numbers.');
+  L.push('- finish with 2-3 concrete braking corrections for lap A. Cite the measured numbers.');
   L.push('');
-  L.push('CROSS-SESSION COMPARISON (delta convention: Challenge - Reference; positive = Challenge slower)');
-  L.push('Reference: L'+R.lap+' ('+fmtLap(R.dur)+') from '+fname(refSel.fileIdx));
-  L.push('Challenge: L'+Ch.lap+' ('+fmtLap(Ch.dur)+') from '+fname(chalSel.fileIdx));
-  L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'Challenge slower':(ds<0?'Challenge faster':'equal'))+')');
-  if(R.startFuel!=null&&Ch.startFuel!=null){
-    const fd=Ch.startFuel-R.startFuel;
-    L.push('Start-of-lap fuel: ref '+R.startFuel.toFixed(2)+' L, chal '+Ch.startFuel.toFixed(2)+' L (delta '+(fd>=0?'+':'')+fd.toFixed(2)+' L)'+(Math.abs(fd)>=0.5?' — part of the time delta may be car weight, not driving':''));
+  L.push('CROSS-SESSION COMPARISON (delta convention: A - B; positive = A slower)');
+  L.push('A: L'+A.lap+' ('+fmtLap(A.dur)+') from '+fname(selA.fileIdx));
+  L.push('B: L'+B.lap+' ('+fmtLap(B.dur)+') from '+fname(selB.fileIdx));
+  L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'A slower':(ds<0?'A faster':'equal'))+')');
+  if(A.startFuel!=null&&B.startFuel!=null){
+    const fd=A.startFuel-B.startFuel;
+    L.push('Start-of-lap fuel: A '+A.startFuel.toFixed(2)+' L, B '+B.startFuel.toFixed(2)+' L (delta '+(fd>=0?'+':'')+fd.toFixed(2)+' L)'+(Math.abs(fd)>=0.5?' — part of the time delta may be car weight, not driving':''));
   }
-  const mtr=(n,vr,vc,u,d)=>{L.push(n+': ref '+(isFinite(vr)?vr.toFixed(d):'-')+' '+u+', chal '+(isFinite(vc)?vc.toFixed(d):'-')+' '+u+' (delta '+(isFinite(vr)&&isFinite(vc)?((vc-vr)>=0?'+':'')+(vc-vr).toFixed(d):'-')+' '+u+')');};
-  mtr('Top speed',R.topSpeed,Ch.topSpeed,'km/h',1);
-  mtr('Max lat G',R.maxLatG,Ch.maxLatG,'G',2);
-  mtr('Max brake G',R.maxBrakeG,Ch.maxBrakeG,'G',2);
-  const cR=cornersFor(refSel.fileIdx,refSel.lapIdx),cCh=cornersFor(chalSel.fileIdx,chalSel.lapIdx);
-  if(cR&&cCh){
-    const sR=smoothOf(cR),sCh=smoothOf(cCh);
-    mtr('Throttle jerk RMS',sR.thr_jerk,sCh.thr_jerk,'%/s^2',0);
-    mtr('Brake rate max',sR.brk_rate_max,sCh.brk_rate_max,'%/s',0);
-    mtr('Steering corrections',sR.corr,sCh.corr,'',0);
+  const mtr=(n,vA,vB,u,d)=>{L.push(n+': A '+(isFinite(vA)?vA.toFixed(d):'-')+' '+u+', B '+(isFinite(vB)?vB.toFixed(d):'-')+' '+u+' (delta '+(isFinite(vA)&&isFinite(vB)?((vA-vB)>=0?'+':'')+(vA-vB).toFixed(d):'-')+' '+u+')');};
+  mtr('Top speed',A.topSpeed,B.topSpeed,'km/h',1);
+  mtr('Max lat G',A.maxLatG,B.maxLatG,'G',2);
+  mtr('Max brake G',A.maxBrakeG,B.maxBrakeG,'G',2);
+  const cA=cornersFor(selA.fileIdx,selA.lapIdx),cB=cornersFor(selB.fileIdx,selB.lapIdx);
+  if(cA&&cB){
+    const sA=smoothOf(cA),sB=smoothOf(cB);
+    mtr('Throttle jerk RMS',sA.thr_jerk,sB.thr_jerk,'%/s^2',0);
+    mtr('Brake rate max',sA.brk_rate_max,sB.brk_rate_max,'%/s',0);
+    mtr('Steering corrections',sA.corr,sB.corr,'',0);
   }
-  const mRef=state.files[refSel.fileIdx].parsed.meta,mCh=state.files[chalSel.fileIdx].parsed.meta;
+  const mA=state.files[selA.fileIdx].parsed.meta,mB=state.files[selB.fileIdx].parsed.meta;
   const ntr=t=>{t=(t||'').toLowerCase().trim();if(t.startsWith('rt_'))t=t.slice(3);return t.split('-')[0];};
-  if(ntr(mRef.track)!==ntr(mCh.track)){
+  if(ntr(mA.track)!==ntr(mB.track)){
     L.push('');
-    L.push('Zone matching unavailable: tracks differ ('+(mRef.track||'?')+' vs '+(mCh.track||'?')+') — brake comparison is limited to the metrics above.');
-  } else if(cR&&cCh){
-    const zones=zonesFor(mCh.track);
-    const {pairs,ua,ub}=matchZones(cCh.corners,cR.corners);
-    const llm=lapLengthM(chalSel.fileIdx,chalSel.lapIdx)||0;
-    const rows=buildRows(pairs,llm,zones,rankCorners(cCh.corners),mCh.track);
+    L.push('Zone matching unavailable: tracks differ ('+(mA.track||'?')+' vs '+(mB.track||'?')+') — brake comparison is limited to the metrics above.');
+  } else if(cA&&cB){
+    const zones=zonesFor(mA.track);
+    const {pairs,ua,ub}=matchZones(cA.corners,cB.corners); // internal A−B = slotA−slotB (T-38 C2/C4)
+    const llm=lapLengthM(selA.fileIdx,selA.lapIdx)||0;
+    const rows=buildRows(pairs,llm,zones,rankCorners(cA.corners),mA.track);
     L.push('');
-    L.push('Braking zones (point / entry / decel / duration — reference / challenge (delta)):');
+    L.push('Braking zones (point / entry / decel / duration — A / B (delta = A - B)):');
     rows.forEach(r=>{
-      let line=' - '+r.label+' ['+r.tag+(Math.abs(r.dpos)>=0.1?' '+(r.dpos>=0?'+':'')+r.dpos.toFixed(1)+' m':'')+']: entry '+r.entryB.toFixed(1)+' / '+r.entryA.toFixed(1)+' ('+(r.dEntry>=0?'+':'')+r.dEntry.toFixed(1)+') km/h, decel '+r.decelB.toFixed(2)+' / '+r.decelA.toFixed(2)+' G, duration '+r.durB.toFixed(2)+' / '+r.durA.toFixed(2)+' s';
-      if(isFinite(r.vminA)&&isFinite(r.vminB))line+=', v-min '+r.vminB.toFixed(1)+' / '+r.vminA.toFixed(1)+' km/h'; // ref / chal
+      let line=' - '+r.label+' ['+r.tag+(Math.abs(r.dpos)>=0.1?' '+(r.dpos>=0?'+':'')+r.dpos.toFixed(1)+' m':'')+']: entry '+r.entryA.toFixed(1)+' / '+r.entryB.toFixed(1)+' ('+(r.dEntry>=0?'+':'')+r.dEntry.toFixed(1)+') km/h, decel '+r.decelA.toFixed(2)+' / '+r.decelB.toFixed(2)+' G, duration '+r.durA.toFixed(2)+' / '+r.durB.toFixed(2)+' s';
+      if(isFinite(r.vminA)&&isFinite(r.vminB))line+=', v-min '+r.vminA.toFixed(1)+' / '+r.vminB.toFixed(1)+' km/h'; // A / B
       const sf=s=>s?s.map(v=>v.toFixed(1)).join('\u00b7'):'\u2014'; // peak |slip| FL/FR/RL/RR deg; dash when channel absent
       if(r.slipA||r.slipB)line+='; slip \u00b0 FL/FR/RL/RR ('+sf(r.slipA)+' / '+sf(r.slipB)+')';
       const dz=decomposeZone(r);
@@ -147,10 +147,10 @@ function crossReviewPrompt(refSel, chalSel){
       L.push(line);
     });
     const leaks=rankLeaks(rows);
-    if(leaks.length)L.push('Top zone time losses (challenge): '+leaks.map(l=>l.corner_label+' '+(l.time_total_s>=0?'+':'')+l.time_total_s.toFixed(2)+' s').join(', '));
+    if(leaks.length)L.push('Top zone time deltas (A - B, by |Δ|): '+leaks.map(l=>l.corner_label+' '+(l.time_total_s>=0?'+':'')+l.time_total_s.toFixed(2)+' s').join(', '));
     if(ua.length||ub.length){
-      const rC=rankCorners(cCh.corners),rR=rankCorners(cR.corners);
-      L.push('Unmatched braking events — only in Challenge: '+(ua.map(a=>zoneRef(a.pos,zones,rC.get(a)||0,mCh.track)+' (entry '+a.entry.toFixed(1)+' km/h)').join(', ')||'none')+'; only in Reference: '+(ub.map(b=>zoneRef(b.pos,zones,rR.get(b)||0,mCh.track)+' (entry '+b.entry.toFixed(1)+' km/h)').join(', ')||'none'));
+      const rA=rankCorners(cA.corners),rB=rankCorners(cB.corners); // ua = unmatched in slot A, ub = unmatched in slot B (T-38 C4)
+      L.push('Unmatched braking events — only in A: '+(ua.map(a=>zoneRef(a.pos,zones,rA.get(a)||0,mA.track)+' (entry '+a.entry.toFixed(1)+' km/h)').join(', ')||'none')+'; only in B: '+(ub.map(b=>zoneRef(b.pos,zones,rB.get(b)||0,mA.track)+' (entry '+b.entry.toFixed(1)+' km/h)').join(', ')||'none'));
     }
   }
   return L.join('\n');
@@ -175,12 +175,11 @@ function crossSetupIni(fi){
   }
   return vals;
 }
-// Formatted setup lines for the assigned Reference (ref) vs Challenge (chal) slots. Delta convention
-// ref -> chal, with the Challenge setup value enclosed in parentheses: "Tire Pressure FL 20(18)".
-// Returns [] when neither slot resolves a setup.
-function crossSetupLines(refSel,chalSel){
-  if(!refSel||!chalSel)return [];
-  const rI=crossSetupIni(refSel.fileIdx),cI=crossSetupIni(chalSel.fileIdx);
+// Formatted setup lines for the assigned A vs B slots, with the B value enclosed in
+// parentheses: "Tire Pressure FL 20(18)". Returns [] when neither slot resolves a setup.
+function crossSetupLines(selA,selB){
+  if(!selA||!selB)return [];
+  const rI=crossSetupIni(selA.fileIdx),cI=crossSetupIni(selB.fileIdx);
   const rows=[
     ['Tire Pressure FL','PRESSURE_LF'],['Tire Pressure FR','PRESSURE_FR'],
     ['Tire Pressure RL','PRESSURE_RL'],['Tire Pressure RR','PRESSURE_RR'],
@@ -204,45 +203,45 @@ function crossSetupLines(refSel,chalSel){
 // Pre-canned LLM review #2: tire grip profile (front vs rear axle) for the filled cross-session slots.
 // Same measured scaffolding as crossReviewPrompt, but the per-zone payload is entry / v-min speeds +
 // peak |slip| FL/FR/RL/RR (no decel/duration/causes - this review coaches rotation & traction).
-function crossGripPrompt(refSel, chalSel){
-  if(!refSel||!chalSel)return null;
-  const R=lapRecord(refSel.fileIdx,refSel.lapIdx),Ch=lapRecord(chalSel.fileIdx,chalSel.lapIdx);
-  if(!R||!Ch)return null;
-  const ds=Ch.dur-R.dur;
+function crossGripPrompt(selA, selB){
+  if(!selA||!selB)return null;
+  const A=lapRecord(selA.fileIdx,selA.lapIdx),B=lapRecord(selB.fileIdx,selB.lapIdx);
+  if(!A||!B)return null;
+  const ds=A.dur-B.dur; // A−B (T-38 C4)
   const fname=fi=>{const f=state.files[fi];return f?f.name:'?';};
   const L=[];
-  L.push('PRE-CANNED REVIEW REQUEST: Tire grip profile (front vs rear) between reference and challenge.');
-  L.push('Using ONLY the measured cross-session data below, analyze the tire grip of the Challenge lap versus the Reference lap:');
+  L.push('PRE-CANNED REVIEW REQUEST: Tire grip profile (front vs rear) between lap A and lap B.');
+  L.push('Using ONLY the measured cross-session data below, analyze the tire grip of lap A versus lap B:');
   L.push('- for each corner read the front axle first (FL/FR slip angles): is the car rotating on entry? Cite the entry / v-min speeds next to the slip figures;');
   L.push('- then the rear axle (RL/RR slip angles): symmetric or one-sided, and what that says about traction through and out of the corner;');
   L.push('- explain each pattern in plain language for a beginner driver - early/slow braking, slow steering input, weight transfer. These are driver-side symptoms only;');
   L.push('- name setup candidates (balance, pressures, suspension) ONLY as candidates when the pattern makes them plausible - never assert a mechanical cause from this data alone.');
-  L.push('Finish with 2-3 concrete driver corrections for the Challenge lap. Cite the measured numbers.');
+  L.push('Finish with 2-3 concrete driver corrections for lap A. Cite the measured numbers.');
   L.push('');
-  L.push('CROSS-SESSION COMPARISON (delta convention: Challenge - Reference; positive = Challenge slower)');
-  L.push('Reference: L'+R.lap+' ('+fmtLap(R.dur)+') from '+fname(refSel.fileIdx));
-  L.push('Challenge: L'+Ch.lap+' ('+fmtLap(Ch.dur)+') from '+fname(chalSel.fileIdx));
-  L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'Challenge slower':(ds<0?'Challenge faster':'equal'))+')');
-  if(R.startFuel!=null&&Ch.startFuel!=null){
-    const fd=Ch.startFuel-R.startFuel;
-    L.push('Start-of-lap fuel: ref '+R.startFuel.toFixed(2)+' L, chal '+Ch.startFuel.toFixed(2)+' L (delta '+(fd>=0?'+':'')+fd.toFixed(2)+' L)'+(Math.abs(fd)>=0.5?' — part of the time delta may be car weight, not driving':''));
+  L.push('CROSS-SESSION COMPARISON (delta convention: A - B; positive = A slower)');
+  L.push('A: L'+A.lap+' ('+fmtLap(A.dur)+') from '+fname(selA.fileIdx));
+  L.push('B: L'+B.lap+' ('+fmtLap(B.dur)+') from '+fname(selB.fileIdx));
+  L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'A slower':(ds<0?'A faster':'equal'))+')');
+  if(A.startFuel!=null&&B.startFuel!=null){
+    const fd=A.startFuel-B.startFuel;
+    L.push('Start-of-lap fuel: A '+A.startFuel.toFixed(2)+' L, B '+B.startFuel.toFixed(2)+' L (delta '+(fd>=0?'+':'')+fd.toFixed(2)+' L)'+(Math.abs(fd)>=0.5?' — part of the time delta may be car weight, not driving':''));
   }
-  const mtr=(n,vr,vc,u,d)=>{L.push(n+': ref '+(isFinite(vr)?vr.toFixed(d):'-')+' '+u+', chal '+(isFinite(vc)?vc.toFixed(d):'-')+' '+u+' (delta '+(isFinite(vr)&&isFinite(vc)?((vc-vr)>=0?'+':'')+(vc-vr).toFixed(d):'-')+' '+u+')');};
-  mtr('Top speed',R.topSpeed,Ch.topSpeed,'km/h',1);
-  mtr('Max lat G',R.maxLatG,Ch.maxLatG,'G',2);
-  const cR=cornersFor(refSel.fileIdx,refSel.lapIdx),cCh=cornersFor(chalSel.fileIdx,chalSel.lapIdx);
-  const mRef=state.files[refSel.fileIdx].parsed.meta,mCh=state.files[chalSel.fileIdx].parsed.meta;
+  const mtr=(n,vA,vB,u,d)=>{L.push(n+': A '+(isFinite(vA)?vA.toFixed(d):'-')+' '+u+', B '+(isFinite(vB)?vB.toFixed(d):'-')+' '+u+' (delta '+(isFinite(vA)&&isFinite(vB)?((vA-vB)>=0?'+':'')+(vA-vB).toFixed(d):'-')+' '+u+')');};
+  mtr('Top speed',A.topSpeed,B.topSpeed,'km/h',1);
+  mtr('Max lat G',A.maxLatG,B.maxLatG,'G',2);
+  const cA=cornersFor(selA.fileIdx,selA.lapIdx),cB=cornersFor(selB.fileIdx,selB.lapIdx);
+  const mA=state.files[selA.fileIdx].parsed.meta,mB=state.files[selB.fileIdx].parsed.meta;
   const ntr=t=>{t=(t||'').toLowerCase().trim();if(t.startsWith('rt_'))t=t.slice(3);return t.split('-')[0];};
-  if(ntr(mRef.track)!==ntr(mCh.track)){
+  if(ntr(mA.track)!==ntr(mB.track)){
     L.push('');
-    L.push('Zone matching unavailable: tracks differ ('+(mRef.track||'?')+' vs '+(mCh.track||'?')+') — grip comparison is limited to the metrics above.');
-  } else if(cR&&cCh){
-    const zones=zonesFor(mCh.track);
-    const {pairs,ua,ub}=matchZones(cCh.corners,cR.corners);
-    const llm=lapLengthM(chalSel.fileIdx,chalSel.lapIdx)||0;
-    const rows=buildRows(pairs,llm,zones,rankCorners(cCh.corners),mCh.track);
+    L.push('Zone matching unavailable: tracks differ ('+(mA.track||'?')+' vs '+(mB.track||'?')+') — grip comparison is limited to the metrics above.');
+  } else if(cA&&cB){
+    const zones=zonesFor(mA.track);
+    const {pairs,ua,ub}=matchZones(cA.corners,cB.corners); // internal A−B = slotA−slotB (T-38 C2/C4)
+    const llm=lapLengthM(selA.fileIdx,selA.lapIdx)||0;
+    const rows=buildRows(pairs,llm,zones,rankCorners(cA.corners),mA.track);
     L.push('');
-    L.push('Tire grip zones (entry / v-min km/h + peak slip \u00b0 FL/FR/RL/RR — challenge / reference):');
+    L.push('Tire grip zones (entry / v-min km/h + peak slip \u00b0 FL/FR/RL/RR — A / B):');
     const sf=s=>s?s.map(v=>v.toFixed(1)).join('\u00b7'):'\u2014'; // peak |slip| deg; dash when channel absent
     rows.forEach(r=>{
       let line=' - '+r.label+' ['+r.tag+(Math.abs(r.dpos)>=0.1?' '+(r.dpos>=0?'+':'')+r.dpos.toFixed(1)+' m':'')+']: entry '+r.entryA.toFixed(1)+' / '+r.entryB.toFixed(1)+' km/h';
@@ -251,8 +250,8 @@ function crossGripPrompt(refSel, chalSel){
       L.push(line);
     });
     if(ua.length||ub.length){
-      const rC=rankCorners(cCh.corners),rR=rankCorners(cR.corners);
-      L.push('Unmatched braking events — only in Challenge: '+(ua.map(a=>zoneRef(a.pos,zones,rC.get(a)||0,mCh.track)).join(', ')||'none')+'; only in Reference: '+(ub.map(b=>zoneRef(b.pos,zones,rR.get(b)||0,mCh.track)).join(', ')||'none'));
+      const rA=rankCorners(cA.corners),rB=rankCorners(cB.corners); // ua = unmatched in slot A, ub = unmatched in slot B (T-38 C4)
+      L.push('Unmatched braking events — only in A: '+(ua.map(a=>zoneRef(a.pos,zones,rA.get(a)||0,mA.track)).join(', ')||'none')+'; only in B: '+(ub.map(b=>zoneRef(b.pos,zones,rB.get(b)||0,mA.track)).join(', ')||'none'));
     }
   }
   return L.join('\n');
@@ -262,15 +261,15 @@ function crossGripPrompt(refSel, chalSel){
    testable headlessly, no DOM) ----
    Per-side payload: stint medians over full laps (dur_s >= min_lap_s) of the buildReport().setupScan
    fields + event sums + flag prevalence + a one-line compared-lap readout in the single-session digest
-   format. Deltas are shown as B − A (Challenge minus Reference), matching crossReviewPrompt /
+   format. Deltas are shown as A \u2212 B, matching crossReviewPrompt /
    crossGripPrompt. hrow picks the canned request: 'all' (umbrella) or a row key mirroring Level 4
    ('tire','us','exit','brake','bottom','abs'). Returns null when either slot is empty; degrades per
    side when a file lacks the mechanical channels or is an embedded preset. */
-function crossHealthPrompt(refSel, chalSel, hrow){
-  if(!refSel||!chalSel)return null;
-  const R=lapRecord(refSel.fileIdx,refSel.lapIdx),Ch=lapRecord(chalSel.fileIdx,chalSel.lapIdx);
-  if(!R||!Ch)return null;
-  const ds=Ch.dur-R.dur;
+function crossHealthPrompt(selA, selB, hrow){
+  if(!selA||!selB)return null;
+  const RA=lapRecord(selA.fileIdx,selA.lapIdx),RB=lapRecord(selB.fileIdx,selB.lapIdx);
+  if(!RA||!RB)return null;
+  const ds=RA.dur-RB.dur; // A−B (T-38 C4)
   const fname=fi=>{const f=state.files[fi];return f?f.name:'?';};
   const g=(v,d)=>(v==null||!isFinite(v))?'-':v.toFixed(d);
   const w4=a=>Array.isArray(a)&&a.length===4?a.map(x=>g(x,1)).join('/'): '-';
@@ -325,7 +324,7 @@ function crossHealthPrompt(refSel, chalSel, hrow){
     }
     return L;
   }
-  const A=sideStats(refSel),B=sideStats(chalSel);
+  const A=sideStats(selA),B=sideStats(selB);
   // request text: both sides -> comparison framing; exactly one side has data -> absolute terms
   // (the old canned lines demanded "how did X change from A to B" even when a side had no scan —
   // T-36 audit of all pre-canned builders found this the only one-sided gap); neither -> NONE.
@@ -341,12 +340,12 @@ function crossHealthPrompt(refSel, chalSel, hrow){
   const REQ_NONE='No setup-scan data on either side (preset laps without an embedded scan, or raw files missing the mechanical channels) - nothing to review from this section. Load a .ld file with the full channel set and try again.';
   const REQ={
     all:['Car health read (A vs B)','Using ONLY the measured setup-scan lines below for both sides, give me a one-minute car health read of A vs B: which rows differ between sessions, on which side do they flag, and what grew from A to B? Rank the 2-3 most plausible setup candidates to test first - each framed as a hypothesis to verify under comparable conditions (fuel mass disclosed per side), never a guaranteed fix. Cite the measured numbers.'],
-    tire:['Tire management (A vs B)','Using ONLY the tire lines of both sides\' setup scans below (core temp end / F-R, pressure medians over full laps): how did tire behaviour change from A to B? Frame deltas as B \u2212 A; name setup candidates (pressures, compound, camber) ONLY when plausible - a fuel-mass difference can mimic thermal changes. Cite the measured numbers.'],
-    us:['Understeer (A vs B)','Using ONLY the understeer lines below (steady-state F\u2212R slip angle diff over full laps): how did steady-state front load change from A to B? Frame deltas as B \u2212 A; name setup candidates (front wing, camber, balance) ONLY when plausible. Cite the measured numbers.'],
-    exit:['Exit oversteer (A vs B)','Using ONLY the exit-oversteer lines below (counter-steer events, rear slip max, throttle hesitation over full laps): how did exit behaviour change from A to B? Frame deltas as B \u2212 A; explain driver-side causes first and name setup candidates (rear grip / traction balance) ONLY when plausible. Cite the measured numbers.'],
-    brake:['Braking stability (A vs B)','Using ONLY the braking-stability lines below (steering reversals per event, peak-decel wheel-speed gap, rear-lock candidates over full laps): how did braking stability change from A to B? Frame deltas as B \u2212 A; name setup candidates (front brake bias first) ONLY when plausible. Cite the measured numbers.'],
-    bottom:['Bottoming (A vs B)','Using ONLY the bottoming lines below (suspension travel p95 ratios, vertical G on straights over full laps): how did ride / bottoming behaviour change from A to B? Frame deltas as B \u2212 A; name setup candidates (ride height, springs, anti-dive) ONLY when plausible. Cite the measured numbers.'],
-    abs:['ABS / TC (A vs B)','Using ONLY the ABS/TC lines below (activation share + event counts over full laps): where and how often did the systems intervene on each side? Repeated ABS points to late/heavy braking or brake-bias candidates; repeated TC on exits points to aggressive throttle-on or rear-grip/balance candidates. Note when a system reads flat zero - it may be disabled in setup, not absent. Frame deltas as B \u2212 A.']
+    tire:['Tire management (A vs B)','Using ONLY the tire lines of both sides\' setup scans below (core temp end / F-R, pressure medians over full laps): how did tire behaviour change from A to B? Frame deltas as A \u2212 B; name setup candidates (pressures, compound, camber) ONLY when plausible - a fuel-mass difference can mimic thermal changes. Cite the measured numbers.'],
+    us:['Understeer (A vs B)','Using ONLY the understeer lines below (steady-state F\u2212R slip angle diff over full laps): how did steady-state front load change from A to B? Frame deltas as A \u2212 B; name setup candidates (front wing, camber, balance) ONLY when plausible. Cite the measured numbers.'],
+    exit:['Exit oversteer (A vs B)','Using ONLY the exit-oversteer lines below (counter-steer events, rear slip max, throttle hesitation over full laps): how did exit behaviour change from A to B? Frame deltas as A \u2212 B; explain driver-side causes first and name setup candidates (rear grip / traction balance) ONLY when plausible. Cite the measured numbers.'],
+    brake:['Braking stability (A vs B)','Using ONLY the braking-stability lines below (steering reversals per event, peak-decel wheel-speed gap, rear-lock candidates over full laps): how did braking stability change from A to B? Frame deltas as A \u2212 B; name setup candidates (front brake bias first) ONLY when plausible. Cite the measured numbers.'],
+    bottom:['Bottoming (A vs B)','Using ONLY the bottoming lines below (suspension travel p95 ratios, vertical G on straights over full laps): how did ride / bottoming behaviour change from A to B? Frame deltas as A \u2212 B; name setup candidates (ride height, springs, anti-dive) ONLY when plausible. Cite the measured numbers.'],
+    abs:['ABS / TC (A vs B)','Using ONLY the ABS/TC lines below (activation share + event counts over full laps): where and how often did the systems intervene on each side? Repeated ABS points to late/heavy braking or brake-bias candidates; repeated TC on exits points to aggressive throttle-on or rear-grip/balance candidates. Note when a system reads flat zero - it may be disabled in setup, not absent. Frame deltas as A \u2212 B.']
   };
   const key=(hrow&&REQ[hrow])?hrow:'all';
   // request text: both sides -> comparison framing; exactly one side has data -> absolute terms
@@ -357,19 +356,19 @@ function crossHealthPrompt(refSel, chalSel, hrow){
   L.push('PRE-CANNED REVIEW REQUEST: '+req[0]+'.');
   L.push(req[1]);
   L.push('');
-  L.push((A&&B?'SETUP-SCAN COMPARISON':'SETUP-SCAN READ')+' (per-side full-lap medians + compared lap'+(A&&B?'; deltas B \u2212 A = Challenge minus Reference)':''));
-  L.push('Reference side A: L'+R.lap+' ('+fmtLap(R.dur)+') from '+fname(refSel.fileIdx));
-  L.push('Challenge side B: L'+Ch.lap+' ('+fmtLap(Ch.dur)+') from '+fname(chalSel.fileIdx));
-  L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'Challenge slower':(ds<0?'Challenge faster':'equal'))+')');
-  if(R.startFuel!=null&&Ch.startFuel!=null){
-    const fd=Ch.startFuel-R.startFuel;
-    L.push('Start-of-lap fuel: ref '+R.startFuel.toFixed(2)+' L, chal '+Ch.startFuel.toFixed(2)+' L (delta '+(fd>=0?'+':'')+fd.toFixed(2)+' L)'+(Math.abs(fd)>=0.5?' \u2014 part of the delta may be car weight, not setup':''));
+  L.push((A&&B?'SETUP-SCAN COMPARISON':'SETUP-SCAN READ')+' (per-side full-lap medians + compared lap'+(A&&B?'; deltas are A - B':''));
+  L.push('Side A: L'+RA.lap+' ('+fmtLap(RA.dur)+') from '+fname(selA.fileIdx));
+  L.push('Side B: L'+RB.lap+' ('+fmtLap(RB.dur)+') from '+fname(selB.fileIdx));
+  L.push('Time delta: '+(ds>=0?'+':'')+ds.toFixed(3)+' s ('+(ds>0?'A slower':(ds<0?'A faster':'equal'))+')');
+  if(RA.startFuel!=null&&RB.startFuel!=null){
+    const fd=RA.startFuel-RB.startFuel;
+    L.push('Start-of-lap fuel: A '+RA.startFuel.toFixed(2)+' L, B '+RB.startFuel.toFixed(2)+' L (delta '+(fd>=0?'+':'')+fd.toFixed(2)+' L)'+(Math.abs(fd)>=0.5?' \u2014 part of the delta may be car weight, not setup':''));
   }
-  L.push(...sideBlock('Side A',refSel));
-  L.push(...sideBlock('Side B',chalSel));
-  // headline deltas (B − A) over full-lap medians - precomputed so the model does no arithmetic
+  L.push(...sideBlock('Side A',selA));
+  L.push(...sideBlock('Side B',selB));
+  // headline deltas (A − B) over full-lap medians - precomputed so the model does no arithmetic
   if(A&&B){
-    const d=(name,va,vb,dig)=>{L.push(name+': A '+(va==null?'-':va.toFixed(dig))+', B '+(vb==null?'-':vb.toFixed(dig))+' (delta B\u2212A '+((va!=null&&vb!=null)?(((vb-va)>=0?'+':'')+(vb-va).toFixed(dig)):'-')+')');};
+    const d=(name,va,vb,dig)=>{L.push(name+': A '+(va==null?'-':va.toFixed(dig))+', B '+(vb==null?'-':vb.toFixed(dig))+' (delta A\u2212B '+((va!=null&&vb!=null)?(((va-vb)>=0?'+':'')+(va-vb).toFixed(dig)):'-')+')');};
     d('F-R core C',A.med('tire_F_minus_R_C'),B.med('tire_F_minus_R_C'),1);
     d('core end C FL',A.medArr('tire_core_end_C',0),B.medArr('tire_core_end_C',0),1);
     d('core end C FR',A.medArr('tire_core_end_C',1),B.medArr('tire_core_end_C',1),1);
